@@ -34,7 +34,8 @@ export default function DatesPage() {
 
   useEffect(() => {
     supabase.from("dates").select("*").order("id")
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error("[dates]", error);
         if (data) setDates(data);
         setLoading(false);
       });

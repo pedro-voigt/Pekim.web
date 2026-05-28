@@ -31,7 +31,8 @@ export default function MoviesPage() {
 
   useEffect(() => {
     supabase.from("movies").select("*").order("id")
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error("[movies]", error);
         if (data) setMovies(data);
         setLoading(false);
       });

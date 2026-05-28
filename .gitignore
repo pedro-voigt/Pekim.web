@@ -25,3 +25,5 @@ dist-ssr
 
 # Screenshots locais
 ss_*.png
+
+.vercel
