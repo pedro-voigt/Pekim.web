@@ -134,8 +134,8 @@ export default function MoviesPage() {
           <span style={{ fontSize: "16px", lineHeight: 1 }}>{(formOpen || isEditing) ? "−" : "+"}</span>
           {isEditing ? "editando filme" : "adicionar filme ou série"}
         </button>
-        <Collapsible open={formOpen} maxHeight="320px">
-          <div style={{
+        <Collapsible open={formOpen} maxHeight="420px">
+          <div data-form-grid style={{
             background: "#F7F4D5", padding: "28px 24px", marginTop: "2px",
             display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px 24px",
           }}>

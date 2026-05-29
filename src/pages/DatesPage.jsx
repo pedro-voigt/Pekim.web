@@ -130,8 +130,8 @@ export default function DatesPage() {
           <span style={{ fontSize: "16px", lineHeight: 1 }}>{(formOpen || isEditing) ? "−" : "+"}</span>
           {isEditing ? "editando date" : "adicionar date"}
         </button>
-        <Collapsible open={formOpen} maxHeight="420px">
-          <div style={{
+        <Collapsible open={formOpen} maxHeight="520px">
+          <div data-form-grid style={{
             background: "#F7F4D5", padding: "28px 24px", marginTop: "2px",
             display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px 24px",
           }}>

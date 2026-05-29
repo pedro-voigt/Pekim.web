@@ -109,8 +109,8 @@ export default function BucketPage() {
           <span style={{ fontSize: "16px", lineHeight: 1 }}>{(formOpen || isEditing) ? "−" : "+"}</span>
           {isEditing ? "editando item" : "adicionar item"}
         </button>
-        <Collapsible open={formOpen} maxHeight="240px">
-          <div style={{
+        <Collapsible open={formOpen} maxHeight="320px">
+          <div data-form-grid style={{
             background: "#F7F4D5", padding: "28px 24px", marginTop: "2px",
             display: "grid", gridTemplateColumns: "3fr 1fr", gap: "20px 24px",
           }}>
