@@ -1,19 +1,4 @@
-import { useState, useEffect, useRef } from "react";
-
-// ─── CONTENT ─────────────────────────────────────────────────────────────────
-
-import { DATES } from "./content/dates";
-import { MOVIES } from "./content/movies";
-import { MEMORIES } from "./content/memories";
-import { OPEN_WHEN } from "./content/openWhen";
-import { BUCKET_LIST } from "./content/bucketList";
-
-// ─── COMPONENTS ──────────────────────────────────────────────────────────────
-
-import StarRating from "./components/ui/StarRating";
-import StatusBadge from "./components/ui/StatusBadge";
-import PageHeader from "./components/ui/PageHeader";
-import FilterChip from "./components/ui/FilterChip";
+import { useState, useRef } from "react";
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────
 
@@ -141,7 +126,7 @@ export default function App() {
                 fontStyle: "italic",
                 fontSize: "20px",
                 color: "#F7F4D5",
-              }}>Pedro & Ela</div>
+              }}>Pedro & Kim</div>
               <div style={{
                 fontFamily: "'Cormorant Garamond', serif",
                 fontStyle: "italic",

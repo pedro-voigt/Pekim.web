@@ -2,26 +2,18 @@ import { useState, useEffect } from "react";
 
 import { supabase } from "../lib/supabase";
 import PageHeader from "../components/ui/PageHeader";
+import PageContainer from "../components/ui/PageContainer";
+import Collapsible from "../components/ui/Collapsible";
 import FilterChip from "../components/ui/FilterChip";
 import StatusBadge from "../components/ui/StatusBadge";
+import ItemActions from "../components/ui/ItemActions";
+import { Label, Input, Select } from "../components/ui/Field";
 
 const CATEGORIES = ["Em casa", "Baratos", "Românticos", "Aventura", "Aesthetic", "Diferentes"];
 const PLANNINGS = ["Baixo", "Médio", "Alto"];
 const STATUS_CYCLE = { "Quero fazer": "Planejado", "Planejado": "Feito", "Feito": "Quero fazer" };
 
-const input = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontStyle: "italic", fontSize: "15px",
-  color: "#0A3323", background: "transparent",
-  border: "none", borderBottom: "1px solid #D8D9B0",
-  outline: "none", width: "100%", padding: "6px 0",
-};
-const label = {
-  fontSize: "10px", letterSpacing: "0.12em",
-  textTransform: "uppercase", color: "#5a8060",
-  fontFamily: "'Cormorant Garamond', serif",
-  display: "block", marginBottom: "4px",
-};
+const EMPTY = { name: "", description: "", cost: "", vibe: "", category: "Em casa", planning: "Baixo" };
 
 export default function DatesPage() {
   const [dates, setDates] = useState([]);
@@ -30,7 +22,8 @@ export default function DatesPage() {
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", cost: "", vibe: "", category: "Em casa", planning: "Baixo" });
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(EMPTY);
 
   useEffect(() => {
     supabase.from("dates").select("*").order("id")
@@ -50,82 +43,129 @@ export default function DatesPage() {
   const activeCount = (filter !== "Todos" ? 1 : 0) + (statusFilter !== "Todos" ? 1 : 0);
   const set = field => e => setForm(f => ({ ...f, [field]: e.target.value }));
 
-  const adicionar = async () => {
+  const iniciarEdicao = (date) => {
+    setEditingId(date.id);
+    setForm({
+      name: date.name || "",
+      description: date.description || "",
+      cost: date.cost || "",
+      vibe: date.vibe || "",
+      category: date.category || "Em casa",
+      planning: date.planning || "Baixo",
+    });
+    setFormOpen(true);
+  };
+
+  const cancelarEdicao = () => {
+    setEditingId(null);
+    setForm(EMPTY);
+    setFormOpen(false);
+  };
+
+  const salvar = async () => {
     if (!form.name.trim()) return;
-    const { data, error } = await supabase
-      .from("dates")
-      .insert({ ...form, name: form.name.trim(), status: "Quero fazer" })
-      .select().single();
-    if (!error && data) {
+    if (editingId) {
+      const patch = { ...form, name: form.name.trim() };
+      const previous = dates.find(d => d.id === editingId);
+      setDates(prev => prev.map(d => d.id === editingId ? { ...d, ...patch } : d));
+      const { error } = await supabase.from("dates").update(patch).eq("id", editingId);
+      if (error) {
+        console.error("[dates update]", error);
+        setDates(prev => prev.map(d => d.id === editingId ? previous : d));
+        return;
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("dates")
+        .insert({ ...form, name: form.name.trim(), status: "Quero fazer" })
+        .select().single();
+      if (error || !data) return;
       setDates(prev => [...prev, data]);
-      setForm({ name: "", description: "", cost: "", vibe: "", category: "Em casa", planning: "Baixo" });
-      setFormOpen(false);
+    }
+    setForm(EMPTY);
+    setEditingId(null);
+    setFormOpen(false);
+  };
+
+  const excluir = async (date) => {
+    const previous = dates;
+    setDates(prev => prev.filter(d => d.id !== date.id));
+    const { error } = await supabase.from("dates").delete().eq("id", date.id);
+    if (error) {
+      console.error("[dates delete]", error);
+      setDates(previous);
     }
   };
 
   const toggleStatus = async (date) => {
     const next = STATUS_CYCLE[date.status] || "Quero fazer";
     setDates(prev => prev.map(d => d.id === date.id ? { ...d, status: next } : d));
-    await supabase.from("dates").update({ status: next }).eq("id", date.id);
+    const { error } = await supabase.from("dates").update({ status: next }).eq("id", date.id);
+    if (error) {
+      console.error("[dates toggle]", error);
+      setDates(prev => prev.map(d => d.id === date.id ? { ...d, status: date.status } : d));
+    }
   };
 
+  const isEditing = editingId !== null;
+
   return (
-    <div style={{ padding: "40px 24px", maxWidth: "900px", margin: "0 auto" }}>
+    <PageContainer>
       <PageHeader title="Dates" sub="Momentos esperando para acontecer" icon="✦" />
 
-      {/* Formulário de adição */}
+      {/* Formulário */}
       <div style={{ marginBottom: "16px" }}>
         <button
-          onClick={() => setFormOpen(o => !o)}
+          onClick={() => isEditing ? cancelarEdicao() : setFormOpen(o => !o)}
           style={{
             display: "flex", alignItems: "center", gap: "8px",
             fontFamily: "'Cormorant Garamond', serif",
             fontStyle: "italic", fontSize: "14px",
-            color: formOpen ? "#F7F4D5" : "#2e5c3a",
-            background: formOpen ? "#0A3323" : "transparent",
+            color: (formOpen || isEditing) ? "#F7F4D5" : "#2e5c3a",
+            background: (formOpen || isEditing) ? "#0A3323" : "transparent",
             border: "1px solid #0A3323", padding: "8px 18px",
             cursor: "pointer", transition: "all 0.2s",
           }}
         >
-          <span style={{ fontSize: "16px", lineHeight: 1 }}>{formOpen ? "−" : "+"}</span>
-          adicionar date
+          <span style={{ fontSize: "16px", lineHeight: 1 }}>{(formOpen || isEditing) ? "−" : "+"}</span>
+          {isEditing ? "editando date" : "adicionar date"}
         </button>
-        <div style={{ maxHeight: formOpen ? "420px" : "0px", overflow: "hidden", transition: "max-height 0.35s ease" }}>
+        <Collapsible open={formOpen} maxHeight="420px">
           <div style={{
             background: "#F7F4D5", padding: "28px 24px", marginTop: "2px",
             display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px 24px",
           }}>
             <div style={{ gridColumn: "1 / -1" }}>
-              <label style={label}>nome *</label>
-              <input value={form.name} onChange={set("name")} placeholder="Que date é esse?" style={input} />
+              <Label>nome *</Label>
+              <Input value={form.name} onChange={set("name")} placeholder="Que date é esse?" />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
-              <label style={label}>descrição</label>
-              <input value={form.description} onChange={set("description")} placeholder="Como vai ser..." style={input} />
+              <Label>descrição</Label>
+              <Input value={form.description} onChange={set("description")} placeholder="Como vai ser..." />
             </div>
             <div>
-              <label style={label}>custo</label>
-              <input value={form.cost} onChange={set("cost")} placeholder="R$0–50" style={input} />
+              <Label>custo</Label>
+              <Input value={form.cost} onChange={set("cost")} placeholder="R$0–50" />
             </div>
             <div>
-              <label style={label}>vibe</label>
-              <input value={form.vibe} onChange={set("vibe")} placeholder="Cozy, Romântico..." style={input} />
+              <Label>vibe</Label>
+              <Input value={form.vibe} onChange={set("vibe")} placeholder="Cozy, Romântico..." />
             </div>
             <div>
-              <label style={label}>categoria</label>
-              <select value={form.category} onChange={set("category")} style={{ ...input, cursor: "pointer" }}>
+              <Label>categoria</Label>
+              <Select value={form.category} onChange={set("category")}>
                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
-              <label style={label}>planejamento</label>
-              <select value={form.planning} onChange={set("planning")} style={{ ...input, cursor: "pointer" }}>
+              <Label>planejamento</Label>
+              <Select value={form.planning} onChange={set("planning")}>
                 {PLANNINGS.map(p => <option key={p}>{p}</option>)}
-              </select>
+              </Select>
             </div>
-            <div>
+            <div style={{ display: "flex", gap: "12px" }}>
               <button
-                onClick={adicionar}
+                onClick={salvar}
                 style={{
                   fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "14px",
                   color: form.name.trim() ? "#F7F4D5" : "#a8bc80",
@@ -135,10 +175,20 @@ export default function DatesPage() {
                   cursor: form.name.trim() ? "pointer" : "default",
                   transition: "all 0.2s",
                 }}
-              >guardar</button>
+              >{isEditing ? "atualizar" : "guardar"}</button>
+              {isEditing && (
+                <button
+                  onClick={cancelarEdicao}
+                  style={{
+                    fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "14px",
+                    color: "#5a8060", background: "transparent",
+                    border: "none", padding: "10px 8px", cursor: "pointer",
+                  }}
+                >cancelar</button>
+              )}
             </div>
           </div>
-        </div>
+        </Collapsible>
       </div>
 
       {/* Filtros */}
@@ -160,7 +210,7 @@ export default function DatesPage() {
             <span style={{ background: "#D3968C", color: "#fff", borderRadius: "50%", width: "18px", height: "18px", fontSize: "10px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{activeCount}</span>
           )}
         </button>
-        <div style={{ overflow: "hidden", maxHeight: filtersOpen ? "200px" : "0px", transition: "max-height 0.35s ease" }}>
+        <Collapsible open={filtersOpen} maxHeight="200px">
           <div style={{ padding: "4px 0 12px", display: "flex", flexDirection: "column", gap: "10px" }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
               {["Todos", ...CATEGORIES].map(c => (
@@ -173,7 +223,7 @@ export default function DatesPage() {
               ))}
             </div>
           </div>
-        </div>
+        </Collapsible>
       </div>
 
       {/* Lista */}
@@ -182,11 +232,25 @@ export default function DatesPage() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "2px" }}>
           {filtered.map(d => (
-            <div key={d.id} style={{ padding: "28px 24px", background: "#F7F4D5", borderBottom: "1px solid #D8D9B0", borderRight: "1px solid #D8D9B0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+            <div key={d.id} style={{
+              padding: "28px 24px",
+              background: "#F7F4D5",
+              borderBottom: "1px solid #D8D9B0",
+              borderRight: "1px solid #D8D9B0",
+              outline: editingId === d.id ? "2px solid #D3968C" : "none",
+              outlineOffset: "-2px",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px", gap: "8px" }}>
                 <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "11px", color: "#D3968C", letterSpacing: "0.1em" }}>{d.vibe}</span>
-                <div onClick={() => toggleStatus(d)} style={{ cursor: "pointer" }} title="Clique para mudar status">
-                  <StatusBadge status={d.status} />
+                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <div onClick={() => toggleStatus(d)} style={{ cursor: "pointer" }} title="Clique para mudar status">
+                    <StatusBadge status={d.status} />
+                  </div>
+                  <ItemActions
+                    onEdit={() => iniciarEdicao(d)}
+                    onDelete={() => excluir(d)}
+                    confirmMessage={`Excluir "${d.name}"?`}
+                  />
                 </div>
               </div>
               <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: "18px", fontWeight: "400", color: "#0A3323", margin: "0 0 8px" }}>{d.name}</h3>
@@ -199,6 +263,6 @@ export default function DatesPage() {
           ))}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

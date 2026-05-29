@@ -1,16 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import useCounter from "../hooks/useCounter";
+import { supabase } from "../lib/supabase";
 
-import { DATES } from "../content/dates";
-import { MOVIES } from "../content/movies";
-import { MEMORIES } from "../content/memories";
 import { OPEN_WHEN } from "../content/openWhen";
-import { BUCKET_LIST } from "../content/bucketList";
 
 export default function HomePage({ onNavigate }) {
   const time = useCounter("2023-12-14");
   const [hovered, setHovered] = useState(false);
+  const [counts, setCounts] = useState({
+    dates: 0,
+    moviesWatched: 0,
+    memories: 0,
+    bucketDone: 0,
+    bucketTotal: 0,
+  });
+  const [lastMemory, setLastMemory] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      supabase.from("dates").select("id", { count: "exact", head: true }),
+      supabase.from("movies").select("watched"),
+      supabase.from("memories").select("title, description, date").order("date", { ascending: false }).limit(1),
+      supabase.from("memories").select("id", { count: "exact", head: true }),
+      supabase.from("bucket_list").select("done"),
+    ]).then(([dates, movies, lastMem, memCount, bucket]) => {
+      if (cancelled) return;
+      setCounts({
+        dates: dates.count ?? 0,
+        moviesWatched: (movies.data || []).filter(m => m.watched).length,
+        memories: memCount.count ?? 0,
+        bucketDone: (bucket.data || []).filter(b => b.done).length,
+        bucketTotal: (bucket.data || []).length,
+      });
+      if (lastMem.data && lastMem.data[0]) setLastMemory(lastMem.data[0]);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div style={{ minHeight: "100vh", padding: "0" }}>
@@ -154,34 +181,36 @@ export default function HomePage({ onNavigate }) {
         </button>
 
         {/* Last memory */}
-        <div
-          onClick={() => onNavigate("memorias")}
-          style={{
-            position: "relative", zIndex: 1,
-            marginTop: "64px",
-            padding: "20px 28px",
-            background: "rgba(255,255,255,0.7)",
-            backdropFilter: "blur(8px)",
-            border: "1px solid rgba(131,153,88,0.25)",
-            borderRadius: "2px",
-            maxWidth: "320px",
-            cursor: "pointer",
-          }}>
-          <div style={{
-            fontSize: "10px", letterSpacing: "0.15em",
-            textTransform: "uppercase", color: "#5a8060",
-            marginBottom: "8px",
-          }}>última memória</div>
-          <div style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: "16px", color: "#0A3323",
-          }}>{MEMORIES[MEMORIES.length - 1].title}</div>
-          <div style={{
-            fontFamily: "'Cormorant Garamond', serif",
-            fontStyle: "italic",
-            fontSize: "13px", color: "#2e5c3a", marginTop: "4px",
-          }}>{MEMORIES[MEMORIES.length - 1].desc.substring(0, 60)}...</div>
-        </div>
+        {lastMemory && (
+          <div
+            onClick={() => onNavigate("memorias")}
+            style={{
+              position: "relative", zIndex: 1,
+              marginTop: "64px",
+              padding: "20px 28px",
+              background: "rgba(255,255,255,0.7)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(131,153,88,0.25)",
+              borderRadius: "2px",
+              maxWidth: "320px",
+              cursor: "pointer",
+            }}>
+            <div style={{
+              fontSize: "10px", letterSpacing: "0.15em",
+              textTransform: "uppercase", color: "#5a8060",
+              marginBottom: "8px",
+            }}>última memória</div>
+            <div style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: "16px", color: "#0A3323",
+            }}>{lastMemory.title}</div>
+            <div style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontStyle: "italic",
+              fontSize: "13px", color: "#2e5c3a", marginTop: "4px",
+            }}>{(lastMemory.description || "").substring(0, 60)}...</div>
+          </div>
+        )}
       </div>
 
       {/* Sections preview */}
@@ -196,12 +225,12 @@ export default function HomePage({ onNavigate }) {
           gap: "2px",
         }}>
           {[
-            { key: "dates", icon: "✦", title: "Dates", sub: `${DATES.length} ideias guardadas` },
-            { key: "filmes", icon: "◎", title: "Filmes & Séries", sub: `${MOVIES.filter(m=>m.watched).length} assistidos juntos` },
-            { key: "memorias", icon: "◇", title: "Memórias", sub: `${MEMORIES.length} momentos especiais` },
+            { key: "dates", icon: "✦", title: "Dates", sub: `${counts.dates} ideias guardadas` },
+            { key: "filmes", icon: "◎", title: "Filmes & Séries", sub: `${counts.moviesWatched} assistidos juntos` },
+            { key: "memorias", icon: "◇", title: "Memórias", sub: `${counts.memories} momentos especiais` },
             { key: "diario", icon: "◈", title: "Diário", sub: "Só nossos pensamentos" },
             { key: "abrir-quando", icon: "⬡", title: "Abrir quando…", sub: `${OPEN_WHEN.length} cartinhas esperando` },
-            { key: "bucket", icon: "⊹", title: "Bucket List", sub: `${BUCKET_LIST.filter(b=>b.done).length}/${BUCKET_LIST.length} realizados` },
+            { key: "bucket", icon: "⊹", title: "Bucket List", sub: `${counts.bucketDone}/${counts.bucketTotal} realizados` },
           ].map(s => (
             <div
               key={s.key}

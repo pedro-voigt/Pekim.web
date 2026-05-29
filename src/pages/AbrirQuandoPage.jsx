@@ -41,6 +41,22 @@ export default function AbrirQuandoPage() {
     }
   };
 
+  const limparCarta = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm("Apagar o conteúdo desta carta?")) return;
+    const previous = cartas[id];
+    setCartas(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    const { error } = await supabase.from("cartas").delete().eq("id", id);
+    if (error) {
+      console.error("[cartas delete]", error);
+      setCartas(prev => ({ ...prev, [id]: previous }));
+    }
+  };
+
   return (
     <div style={{ padding: "40px 24px", maxWidth: "680px", margin: "0 auto" }}>
       <PageHeader title="Abrir quando…" sub="Cartinhas para os momentos certos" icon="⬡" />
@@ -160,21 +176,38 @@ export default function AbrirQuandoPage() {
                       lineHeight: 1.8, margin: "0 0 20px",
                       whiteSpace: "pre-wrap",
                     }}>{cartas[item.id]}</p>
-                    <button
-                      onClick={(e) => startEdit(item.id, e)}
-                      style={{
-                        fontFamily: "'Cormorant Garamond', serif",
-                        fontStyle: "italic",
-                        fontSize: "12px",
-                        color: "#5a8060",
-                        background: "transparent",
-                        border: "none",
-                        padding: "0",
-                        cursor: "pointer",
-                        textDecoration: "underline",
-                        textDecorationStyle: "dotted",
-                      }}
-                    >editar carta</button>
+                    <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
+                      <button
+                        onClick={(e) => startEdit(item.id, e)}
+                        style={{
+                          fontFamily: "'Cormorant Garamond', serif",
+                          fontStyle: "italic",
+                          fontSize: "12px",
+                          color: "#5a8060",
+                          background: "transparent",
+                          border: "none",
+                          padding: "0",
+                          cursor: "pointer",
+                          textDecorationLine: "underline",
+                          textDecorationStyle: "dotted",
+                        }}
+                      >editar carta</button>
+                      <button
+                        onClick={(e) => limparCarta(item.id, e)}
+                        style={{
+                          fontFamily: "'Cormorant Garamond', serif",
+                          fontStyle: "italic",
+                          fontSize: "12px",
+                          color: "#D3968C",
+                          background: "transparent",
+                          border: "none",
+                          padding: "0",
+                          cursor: "pointer",
+                          textDecorationLine: "underline",
+                          textDecorationStyle: "dotted",
+                        }}
+                      >limpar carta</button>
+                    </div>
                   </>
                 ) : (
                   <>
