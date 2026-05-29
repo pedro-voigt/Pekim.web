@@ -182,7 +182,7 @@ export default function HomePage({ onNavigate }) {
 
         {/* Last memory */}
         {lastMemory && (
-          <div
+          <button
             onClick={() => onNavigate("memorias")}
             style={{
               position: "relative", zIndex: 1,
@@ -193,7 +193,11 @@ export default function HomePage({ onNavigate }) {
               border: "1px solid rgba(131,153,88,0.25)",
               borderRadius: "2px",
               maxWidth: "320px",
+              width: "100%",
               cursor: "pointer",
+              textAlign: "left",
+              font: "inherit",
+              color: "inherit",
             }}>
             <div style={{
               fontSize: "10px", letterSpacing: "0.15em",
@@ -209,7 +213,7 @@ export default function HomePage({ onNavigate }) {
               fontStyle: "italic",
               fontSize: "13px", color: "#2e5c3a", marginTop: "4px",
             }}>{(lastMemory.description || "").substring(0, 60)}...</div>
-          </div>
+          </button>
         )}
       </div>
 
@@ -232,15 +236,20 @@ export default function HomePage({ onNavigate }) {
             { key: "abrir-quando", icon: "⬡", title: "Abrir quando…", sub: `${OPEN_WHEN.length} cartinhas esperando` },
             { key: "bucket", icon: "⊹", title: "Bucket List", sub: `${counts.bucketDone}/${counts.bucketTotal} realizados` },
           ].map(s => (
-            <div
+            <button
               key={s.key}
               onClick={() => onNavigate(s.key)}
               style={{
                 padding: "32px 28px",
                 background: "#F7F4D5",
+                border: "none",
+                borderBottom: "1px solid #D8D9B0",
                 cursor: "pointer",
                 transition: "background 0.2s",
-                borderBottom: "1px solid #D8D9B0",
+                textAlign: "left",
+                font: "inherit",
+                color: "inherit",
+                width: "100%",
               }}
               onMouseEnter={e => e.currentTarget.style.background = "#E8E5C8"}
               onMouseLeave={e => e.currentTarget.style.background = "#F7F4D5"}
@@ -259,7 +268,7 @@ export default function HomePage({ onNavigate }) {
                 fontStyle: "italic",
                 fontSize: "13px", color: "#5a8060",
               }}>{s.sub}</div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

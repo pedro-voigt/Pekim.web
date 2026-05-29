@@ -243,9 +243,14 @@ export default function DatesPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px", gap: "8px" }}>
                 <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "11px", color: "#D3968C", letterSpacing: "0.1em" }}>{d.vibe}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <div onClick={() => toggleStatus(d)} style={{ cursor: "pointer" }} title="Clique para mudar status">
+                  <button
+                    onClick={() => toggleStatus(d)}
+                    title="Clique para mudar status"
+                    aria-label={`Status: ${d.status}. Mudar para próximo.`}
+                    style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+                  >
                     <StatusBadge status={d.status} />
-                  </div>
+                  </button>
                   <ItemActions
                     onEdit={() => iniciarEdicao(d)}
                     onDelete={() => excluir(d)}

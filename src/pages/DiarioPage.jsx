@@ -5,6 +5,9 @@ import PageContainer from "../components/ui/PageContainer";
 import ItemActions from "../components/ui/ItemActions";
 import { Textarea } from "../components/ui/Field";
 import { supabase } from "../lib/supabase";
+import useLocalStorage from "../hooks/useLocalStorage";
+
+const AUTHORS = ["Pedro", "Kim"];
 
 const PROMPTS = [
   "Melhor momento do mês",
@@ -20,6 +23,7 @@ export default function DiarioPage() {
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
+  const [author, setAuthor] = useLocalStorage("pekim:author", "Pedro");
 
   useEffect(() => {
     supabase
@@ -66,7 +70,7 @@ export default function DiarioPage() {
         date: new Date().toISOString().split("T")[0],
         prompt: selectedPrompt || "Entrada livre",
         content: text.trim(),
-        author: "Pedro",
+        author,
       };
       const { data, error } = await supabase.from("diario").insert(nova).select().single();
       if (error || !data) return;
@@ -94,6 +98,37 @@ export default function DiarioPage() {
     <PageContainer maxWidth="680px">
       <PageHeader title="Diário" sub="Pensamentos, sentimentos, momentos" icon="◈" />
 
+      {/* Autor */}
+      <div style={{ marginBottom: "32px" }}>
+        <div style={{
+          fontSize: "11px", letterSpacing: "0.15em",
+          textTransform: "uppercase", color: "#5a8060",
+          marginBottom: "12px",
+          fontFamily: "'Cormorant Garamond', serif",
+        }}>quem está escrevendo</div>
+        <div role="radiogroup" aria-label="Autor" style={{ display: "flex", gap: "2px" }}>
+          {AUTHORS.map(a => (
+            <button
+              key={a}
+              role="radio"
+              aria-checked={author === a}
+              onClick={() => setAuthor(a)}
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontStyle: "italic",
+                fontSize: "14px",
+                color: author === a ? "#F7F4D5" : "#2e5c3a",
+                background: author === a ? "#0A3323" : "#E8E5C8",
+                border: "none",
+                padding: "8px 22px",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >{a}</button>
+          ))}
+        </div>
+      </div>
+
       {/* Prompts */}
       <div style={{ marginBottom: "48px" }}>
         <div style={{
@@ -104,8 +139,9 @@ export default function DiarioPage() {
         }}>sugestões de entrada</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
           {PROMPTS.map(p => (
-            <div
+            <button
               key={p}
+              aria-pressed={selectedPrompt === p}
               onClick={() => setSelectedPrompt(selectedPrompt === p ? null : p)}
               style={{
                 fontFamily: "'Cormorant Garamond', serif",
@@ -113,11 +149,12 @@ export default function DiarioPage() {
                 fontSize: "13px",
                 color: selectedPrompt === p ? "#F7F4D5" : "#2e5c3a",
                 background: selectedPrompt === p ? "#0A3323" : "#E8E5C8",
+                border: "none",
                 padding: "8px 16px",
                 cursor: "pointer",
                 transition: "all 0.2s",
               }}
-            >{p}</div>
+            >{p}</button>
           ))}
         </div>
       </div>

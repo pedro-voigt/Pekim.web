@@ -65,15 +65,21 @@ export default function AbrirQuandoPage() {
         {OPEN_WHEN.map(item => (
           <div key={item.id}>
             {/* Header da carta */}
-            <div
+            <button
               onClick={() => setOpen(open === item.id ? null : item.id)}
+              aria-expanded={open === item.id}
               style={{
                 padding: "24px 28px",
                 background: open === item.id ? "#E8E5C8" : "#F7F4D5",
+                border: "none",
                 cursor: "pointer",
                 display: "flex", alignItems: "center",
                 justifyContent: "space-between",
                 transition: "background 0.2s",
+                width: "100%",
+                textAlign: "left",
+                font: "inherit",
+                color: "inherit",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -100,7 +106,7 @@ export default function AbrirQuandoPage() {
                   transition: "transform 0.3s",
                 }}>›</span>
               </div>
-            </div>
+            </button>
 
             {/* Conteúdo expansível */}
             <div style={{

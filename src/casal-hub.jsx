@@ -101,6 +101,12 @@ export default function App() {
         @media (max-width: 767px) {
           [data-form-grid] { grid-template-columns: 1fr !important; }
         }
+        :focus { outline: none; }
+        :focus-visible {
+          outline: 2px solid #D3968C;
+          outline-offset: 2px;
+          border-radius: 1px;
+        }
       `}</style>
 
       <div style={{

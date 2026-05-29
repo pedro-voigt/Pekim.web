@@ -6,6 +6,7 @@ import PageContainer from "../components/ui/PageContainer";
 import Collapsible from "../components/ui/Collapsible";
 import ItemActions from "../components/ui/ItemActions";
 import { Label, Input } from "../components/ui/Field";
+import clickable from "../lib/clickable";
 
 const EMPTY = { item: "", emoji: "✦" };
 
@@ -196,7 +197,10 @@ export default function BucketPage() {
           {items.map(item => (
             <div
               key={item.id}
-              onClick={() => toggleDone(item)}
+              {...clickable(() => toggleDone(item), {
+                "aria-pressed": item.done,
+                "aria-label": `${item.item} — ${item.done ? "feito" : "pendente"}`,
+              })}
               style={{
                 display: "flex", alignItems: "center",
                 gap: "20px",
