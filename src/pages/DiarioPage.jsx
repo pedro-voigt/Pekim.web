@@ -5,6 +5,7 @@ import PageContainer from "../components/ui/PageContainer";
 import ItemActions from "../components/ui/ItemActions";
 import { Textarea } from "../components/ui/Field";
 import { supabase } from "../lib/supabase";
+import { toast } from "../lib/toast";
 import useLocalStorage from "../hooks/useLocalStorage";
 
 const AUTHORS = ["Pedro", "Kim"];
@@ -30,8 +31,17 @@ export default function DiarioPage() {
       .from("diario")
       .select("*")
       .order("created_at", { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("[diario]", error);
+          toast.error("não foi possível carregar o diário");
+        }
         if (data) setEntries(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("[diario fetch]", err);
+        toast.error("não foi possível carregar o diário");
         setLoading(false);
       });
   }, []);
@@ -62,6 +72,7 @@ export default function DiarioPage() {
       const { error } = await supabase.from("diario").update(patch).eq("id", editingId);
       if (error) {
         console.error("[diario update]", error);
+        toast.error("não foi possível atualizar a entrada");
         setEntries(prev => prev.map(e => e.id === editingId ? previous : e));
         return;
       }
@@ -73,7 +84,11 @@ export default function DiarioPage() {
         author,
       };
       const { data, error } = await supabase.from("diario").insert(nova).select().single();
-      if (error || !data) return;
+      if (error || !data) {
+        console.error("[diario insert]", error);
+        toast.error("não foi possível guardar a entrada");
+        return;
+      }
       setEntries(prev => [data, ...prev]);
     }
 
@@ -88,6 +103,7 @@ export default function DiarioPage() {
     const { error } = await supabase.from("diario").delete().eq("id", entry.id);
     if (error) {
       console.error("[diario delete]", error);
+      toast.error("não foi possível excluir");
       setEntries(previous);
     }
   };

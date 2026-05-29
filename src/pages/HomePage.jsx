@@ -35,6 +35,9 @@ export default function HomePage({ onNavigate }) {
         bucketTotal: (bucket.data || []).length,
       });
       if (lastMem.data && lastMem.data[0]) setLastMemory(lastMem.data[0]);
+    }).catch((err) => {
+      // Stay silent on the home page — each section page will surface its own toast.
+      console.error("[home counts]", err);
     });
     return () => { cancelled = true; };
   }, []);

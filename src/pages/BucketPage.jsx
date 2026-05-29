@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 import { supabase } from "../lib/supabase";
+import { toast } from "../lib/toast";
 import PageHeader from "../components/ui/PageHeader";
 import PageContainer from "../components/ui/PageContainer";
 import Collapsible from "../components/ui/Collapsible";
@@ -20,8 +21,16 @@ export default function BucketPage() {
   useEffect(() => {
     supabase.from("bucket_list").select("*").order("id")
       .then(({ data, error }) => {
-        if (error) console.error("[bucket]", error);
+        if (error) {
+          console.error("[bucket]", error);
+          toast.error("não foi possível carregar a bucket list");
+        }
         if (data) setItems(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("[bucket fetch]", err);
+        toast.error("não foi possível carregar a bucket list");
         setLoading(false);
       });
   }, []);
@@ -49,6 +58,7 @@ export default function BucketPage() {
       const { error } = await supabase.from("bucket_list").update(payload).eq("id", editingId);
       if (error) {
         console.error("[bucket update]", error);
+        toast.error("não foi possível atualizar o item");
         setItems(prev => prev.map(i => i.id === editingId ? previous : i));
         return;
       }
@@ -57,7 +67,11 @@ export default function BucketPage() {
         .from("bucket_list")
         .insert({ ...payload, done: false })
         .select().single();
-      if (error || !data) return;
+      if (error || !data) {
+        console.error("[bucket insert]", error);
+        toast.error("não foi possível guardar o item");
+        return;
+      }
       setItems(prev => [...prev, data]);
     }
     setForm(EMPTY);
@@ -71,6 +85,7 @@ export default function BucketPage() {
     const { error } = await supabase.from("bucket_list").delete().eq("id", item.id);
     if (error) {
       console.error("[bucket delete]", error);
+      toast.error("não foi possível excluir");
       setItems(previous);
     }
   };
@@ -81,6 +96,7 @@ export default function BucketPage() {
     const { error } = await supabase.from("bucket_list").update({ done }).eq("id", item.id);
     if (error) {
       console.error("[bucket toggle]", error);
+      toast.error("não foi possível atualizar");
       setItems(prev => prev.map(b => b.id === item.id ? { ...b, done: !done } : b));
     }
   };

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 
 import PageHeader from "../components/ui/PageHeader";
 import { supabase } from "../lib/supabase";
+import { toast } from "../lib/toast";
 
 import { OPEN_WHEN } from "../content/openWhen";
 
@@ -15,12 +16,20 @@ export default function AbrirQuandoPage() {
     supabase
       .from("cartas")
       .select("id, content")
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("[cartas]", error);
+          toast.error("não foi possível carregar as cartas");
+        }
         if (data) {
           const map = {};
           data.forEach(row => { map[row.id] = row.content; });
           setCartas(map);
         }
+      })
+      .catch((err) => {
+        console.error("[cartas fetch]", err);
+        toast.error("não foi possível carregar as cartas");
       });
   }, []);
 
@@ -35,10 +44,13 @@ export default function AbrirQuandoPage() {
       .from("cartas")
       .upsert({ id, content: draftText, updated_at: new Date().toISOString() });
 
-    if (!error) {
-      setCartas(prev => ({ ...prev, [id]: draftText }));
-      setEditing(null);
+    if (error) {
+      console.error("[cartas upsert]", error);
+      toast.error("não foi possível guardar a carta");
+      return;
     }
+    setCartas(prev => ({ ...prev, [id]: draftText }));
+    setEditing(null);
   };
 
   const limparCarta = async (id, e) => {
@@ -53,6 +65,7 @@ export default function AbrirQuandoPage() {
     const { error } = await supabase.from("cartas").delete().eq("id", id);
     if (error) {
       console.error("[cartas delete]", error);
+      toast.error("não foi possível limpar a carta");
       setCartas(prev => ({ ...prev, [id]: previous }));
     }
   };

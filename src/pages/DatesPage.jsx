@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 import { supabase } from "../lib/supabase";
+import { toast } from "../lib/toast";
 import PageHeader from "../components/ui/PageHeader";
 import PageContainer from "../components/ui/PageContainer";
 import Collapsible from "../components/ui/Collapsible";
@@ -28,8 +29,16 @@ export default function DatesPage() {
   useEffect(() => {
     supabase.from("dates").select("*").order("id")
       .then(({ data, error }) => {
-        if (error) console.error("[dates]", error);
+        if (error) {
+          console.error("[dates]", error);
+          toast.error("não foi possível carregar os dates");
+        }
         if (data) setDates(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("[dates fetch]", err);
+        toast.error("não foi possível carregar os dates");
         setLoading(false);
       });
   }, []);
@@ -71,6 +80,7 @@ export default function DatesPage() {
       const { error } = await supabase.from("dates").update(patch).eq("id", editingId);
       if (error) {
         console.error("[dates update]", error);
+        toast.error("não foi possível atualizar o date");
         setDates(prev => prev.map(d => d.id === editingId ? previous : d));
         return;
       }
@@ -79,7 +89,11 @@ export default function DatesPage() {
         .from("dates")
         .insert({ ...form, name: form.name.trim(), status: "Quero fazer" })
         .select().single();
-      if (error || !data) return;
+      if (error || !data) {
+        console.error("[dates insert]", error);
+        toast.error("não foi possível guardar o date");
+        return;
+      }
       setDates(prev => [...prev, data]);
     }
     setForm(EMPTY);
@@ -93,6 +107,7 @@ export default function DatesPage() {
     const { error } = await supabase.from("dates").delete().eq("id", date.id);
     if (error) {
       console.error("[dates delete]", error);
+      toast.error("não foi possível excluir");
       setDates(previous);
     }
   };
@@ -103,6 +118,7 @@ export default function DatesPage() {
     const { error } = await supabase.from("dates").update({ status: next }).eq("id", date.id);
     if (error) {
       console.error("[dates toggle]", error);
+      toast.error("não foi possível mudar o status");
       setDates(prev => prev.map(d => d.id === date.id ? { ...d, status: date.status } : d));
     }
   };

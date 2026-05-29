@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 import { supabase } from "../lib/supabase";
+import { toast } from "../lib/toast";
 import PageHeader from "../components/ui/PageHeader";
 import PageContainer from "../components/ui/PageContainer";
 import Collapsible from "../components/ui/Collapsible";
@@ -27,8 +28,16 @@ export default function MemoriesPage() {
   useEffect(() => {
     supabase.from("memories").select("*").order("date", { ascending: true })
       .then(({ data, error }) => {
-        if (error) console.error("[memories]", error);
+        if (error) {
+          console.error("[memories]", error);
+          toast.error("não foi possível carregar as memórias");
+        }
         if (data) setMemories(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("[memories fetch]", err);
+        toast.error("não foi possível carregar as memórias");
         setLoading(false);
       });
   }, []);
@@ -64,6 +73,7 @@ export default function MemoriesPage() {
       const { error } = await supabase.from("memories").update(payload).eq("id", editingId);
       if (error) {
         console.error("[memories update]", error);
+        toast.error("não foi possível atualizar a memória");
         setMemories(prev => sortByDate(prev.map(m => m.id === editingId ? previous : m)));
         return;
       }
@@ -72,7 +82,11 @@ export default function MemoriesPage() {
         .from("memories")
         .insert(payload)
         .select().single();
-      if (error || !data) return;
+      if (error || !data) {
+        console.error("[memories insert]", error);
+        toast.error("não foi possível guardar a memória");
+        return;
+      }
       setMemories(prev => sortByDate([...prev, data]));
     }
     setForm(EMPTY);
@@ -86,6 +100,7 @@ export default function MemoriesPage() {
     const { error } = await supabase.from("memories").delete().eq("id", m.id);
     if (error) {
       console.error("[memories delete]", error);
+      toast.error("não foi possível excluir");
       setMemories(previous);
     }
   };

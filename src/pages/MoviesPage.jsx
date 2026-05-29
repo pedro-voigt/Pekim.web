@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 import { supabase } from "../lib/supabase";
+import { toast } from "../lib/toast";
 import PageHeader from "../components/ui/PageHeader";
 import PageContainer from "../components/ui/PageContainer";
 import Collapsible from "../components/ui/Collapsible";
@@ -25,8 +26,16 @@ export default function MoviesPage() {
   useEffect(() => {
     supabase.from("movies").select("*").order("id")
       .then(({ data, error }) => {
-        if (error) console.error("[movies]", error);
+        if (error) {
+          console.error("[movies]", error);
+          toast.error("não foi possível carregar os filmes");
+        }
         if (data) setMovies(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("[movies fetch]", err);
+        toast.error("não foi possível carregar os filmes");
         setLoading(false);
       });
   }, []);
@@ -66,6 +75,7 @@ export default function MoviesPage() {
       const { error } = await supabase.from("movies").update(payload).eq("id", editingId);
       if (error) {
         console.error("[movies update]", error);
+        toast.error("não foi possível atualizar o filme");
         setMovies(prev => prev.map(m => m.id === editingId ? previous : m));
         return;
       }
@@ -74,7 +84,11 @@ export default function MoviesPage() {
         .from("movies")
         .insert({ ...payload, watched: false, rating: null, fav: false })
         .select().single();
-      if (error || !data) return;
+      if (error || !data) {
+        console.error("[movies insert]", error);
+        toast.error("não foi possível guardar o filme");
+        return;
+      }
       setMovies(prev => [...prev, data]);
     }
     setForm(EMPTY);
@@ -88,6 +102,7 @@ export default function MoviesPage() {
     const { error } = await supabase.from("movies").delete().eq("id", movie.id);
     if (error) {
       console.error("[movies delete]", error);
+      toast.error("não foi possível excluir");
       setMovies(previous);
     }
   };
@@ -98,6 +113,7 @@ export default function MoviesPage() {
     const { error } = await supabase.from("movies").update({ watched }).eq("id", movie.id);
     if (error) {
       console.error("[movies toggle]", error);
+      toast.error("não foi possível atualizar");
       setMovies(prev => prev.map(m => m.id === movie.id ? { ...m, watched: !watched } : m));
     }
   };
@@ -107,6 +123,7 @@ export default function MoviesPage() {
     const { error } = await supabase.from("movies").update({ rating }).eq("id", movie.id);
     if (error) {
       console.error("[movies rating]", error);
+      toast.error("não foi possível salvar a nota");
       setMovies(prev => prev.map(m => m.id === movie.id ? { ...m, rating: movie.rating } : m));
     }
   };

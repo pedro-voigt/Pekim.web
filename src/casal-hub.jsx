@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 
 import useMediaQuery from "./hooks/useMediaQuery";
+import Toaster from "./components/ui/Toaster";
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────
 
@@ -283,6 +284,8 @@ export default function App() {
         </main>
 
       </div>
+
+      <Toaster />
     </>
   );
 }
