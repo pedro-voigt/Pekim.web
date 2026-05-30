@@ -1,7 +1,10 @@
 import { useState, useRef } from "react";
 
 import useMediaQuery from "./hooks/useMediaQuery";
+import useSession from "./hooks/useSession";
+import { supabase } from "./lib/supabase";
 import Toaster from "./components/ui/Toaster";
+import Login from "./components/Login";
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────
 
@@ -36,6 +39,7 @@ const NAV_ICONS = {
 // ─── APP ─────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { session, loading: authLoading } = useSession();
   const [page, setPage] = useState("home");
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -110,6 +114,16 @@ export default function App() {
         }
       `}</style>
 
+      {authLoading ? (
+        <div style={{
+          height: "100dvh", background: "#EEEBd8",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic",
+          fontSize: "16px", color: "#a8bc80", animation: "pulse 1.2s infinite",
+        }}>✦ ✦ ✦</div>
+      ) : !session ? (
+        <Login />
+      ) : (
       <div style={{
         display: "flex",
         flexDirection: isMobile ? "column" : "row",
@@ -267,6 +281,30 @@ export default function App() {
               {expanded && <span>{item.label}</span>}
             </button>
           ))}
+
+          {/* Sair */}
+          <button
+            onClick={() => supabase.auth.signOut()}
+            title={!expanded ? "Sair" : undefined}
+            style={{
+              marginTop: "auto",
+              fontFamily: "'Cormorant Garamond', serif",
+              fontStyle: "italic", fontSize: "14px",
+              color: "rgba(247,244,213,0.45)",
+              background: "transparent", border: "none",
+              padding: expanded ? "12px 28px" : "12px 0",
+              cursor: "pointer", textAlign: expanded ? "left" : "center",
+              width: "100%", letterSpacing: "0.02em",
+              borderLeft: "2px solid transparent",
+              whiteSpace: "nowrap", overflow: "hidden",
+              display: "flex", alignItems: "center",
+              justifyContent: expanded ? "flex-start" : "center",
+              gap: "10px", flexShrink: 0,
+            }}
+          >
+            <span style={{ fontSize: expanded ? "13px" : "16px", flexShrink: 0 }}>⏻</span>
+            {expanded && <span>sair</span>}
+          </button>
         </nav>
 
         {/* Content */}
@@ -284,6 +322,7 @@ export default function App() {
         </main>
 
       </div>
+      )}
 
       <Toaster />
     </>
