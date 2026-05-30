@@ -7,6 +7,7 @@ import PageContainer from "../components/ui/PageContainer";
 import Collapsible from "../components/ui/Collapsible";
 import ItemActions from "../components/ui/ItemActions";
 import { Label, Input, Textarea } from "../components/ui/Field";
+import CorkMap from "../components/map/CorkMap";
 
 const COLORS = ["#c9ddb0", "#b5c490", "#a8d4b8", "#D3968C", "#b8d4d8"];
 
@@ -24,6 +25,7 @@ export default function MemoriesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY);
+  const [tab, setTab] = useState("timeline"); // "timeline" | "map"
 
   useEffect(() => {
     supabase.from("memories").select("*").order("date", { ascending: true })
@@ -111,6 +113,30 @@ export default function MemoriesPage() {
     <PageContainer>
       <PageHeader title="Memórias" sub="Tudo que a gente não quer esquecer" icon="◇" />
 
+      {/* Abas */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "32px" }}>
+        {[
+          { key: "timeline", label: "Linha do tempo" },
+          { key: "map", label: "Mapa" },
+        ].map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontStyle: "italic", fontSize: "14px",
+              color: tab === t.key ? "#F7F4D5" : "#2e5c3a",
+              background: tab === t.key ? "#0A3323" : "transparent",
+              border: "1px solid #0A3323", padding: "8px 18px",
+              cursor: "pointer", transition: "all 0.2s",
+            }}
+          >{t.label}</button>
+        ))}
+      </div>
+
+      {tab === "map" && <CorkMap />}
+
+      {tab === "timeline" && (<>
       {/* Formulário */}
       <div style={{ marginBottom: "40px" }}>
         <button
@@ -283,6 +309,7 @@ export default function MemoriesPage() {
           ))}
         </div>
       )}
+      </>)}
     </PageContainer>
   );
 }
