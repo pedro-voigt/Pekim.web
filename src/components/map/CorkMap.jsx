@@ -211,11 +211,12 @@ export default function CorkMap() {
             </div>
           )}
 
-          {/* Botão adicionar (só no modo de visualização) */}
+          {/* Botão adicionar (só no modo de visualização). Canto inferior-direito:
+              o topo tem o zoom do Leaflet (esq.) e a polaroid "nós" (dir.). */}
           {!placing && !formOpen && !selected && (
             <button
               onClick={startAdd}
-              style={{ position: "absolute", top: "12px", right: "12px", zIndex: 550, ...overlayBtn }}
+              style={{ position: "absolute", bottom: "22px", right: "12px", zIndex: 560, ...overlayBtn }}
             >+ adicionar lugar</button>
           )}
 

@@ -194,6 +194,7 @@ export default function PlaceForm({ place, coords, onSave, onCancel }) {
         <FormActions
           canSave={!!form.nome.trim() && !saving}
           editing={editing}
+          showCancel
           onSave={salvar}
           onCancel={onCancel}
           style={{ marginTop: "4px" }}

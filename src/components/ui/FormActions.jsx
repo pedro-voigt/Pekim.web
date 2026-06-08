@@ -1,5 +1,7 @@
-// Rodapé do formulário: botão guardar/atualizar + cancelar (no modo edição).
-export default function FormActions({ canSave, editing, onSave, onCancel, style }) {
+// Rodapé do formulário: botão guardar/atualizar + cancelar.
+// Cancelar aparece no modo edição ou quando `showCancel` é passado (ex.: criar
+// um lugar novo, onde também faz sentido desistir).
+export default function FormActions({ canSave, editing, onSave, onCancel, style, showCancel }) {
   return (
     <div style={{ display: "flex", gap: "12px", ...style }}>
       <button
@@ -14,7 +16,7 @@ export default function FormActions({ canSave, editing, onSave, onCancel, style 
           transition: "all 0.2s",
         }}
       >{editing ? "atualizar" : "guardar"}</button>
-      {editing && (
+      {(editing || showCancel) && (
         <button
           onClick={onCancel}
           style={{
