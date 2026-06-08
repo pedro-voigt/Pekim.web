@@ -216,7 +216,7 @@ export default function CorkMap() {
           {!placing && !formOpen && !selected && (
             <button
               onClick={startAdd}
-              style={{ position: "absolute", bottom: "22px", right: "12px", zIndex: 560, ...overlayBtn }}
+              style={{ position: "absolute", bottom: "44px", right: "12px", zIndex: 560, ...overlayBtn }}
             >+ adicionar lugar</button>
           )}
 
