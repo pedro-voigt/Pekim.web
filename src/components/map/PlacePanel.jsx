@@ -2,6 +2,8 @@
 // Passo 5: fotos (polaroids), período, nota, avatar do autor (P/K).
 // Passo 6 adiciona a rota desenhada no mapa (aqui já mostramos o resumo).
 
+import { confirm } from "../../lib/confirm";
+
 const fmt = (d) =>
   d
     ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR", {
@@ -61,8 +63,8 @@ const labelStyle = {
 export default function PlacePanel({ place, onClose, onEdit, onDelete }) {
   if (!place) return null;
 
-  const handleDelete = () => {
-    if (window.confirm(`Excluir "${place.nome}" do mapa?`)) onDelete();
+  const handleDelete = async () => {
+    if (await confirm(`Excluir "${place.nome}" do mapa?`)) onDelete();
   };
 
   const periodo = [fmt(place.data_inicio), fmt(place.data_fim)].filter(Boolean).join(" — ");

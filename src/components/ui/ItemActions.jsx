@@ -1,3 +1,5 @@
+import { confirm } from "../../lib/confirm";
+
 const btn = {
   fontFamily: "'Cormorant Garamond', serif",
   fontSize: "16px",
@@ -11,9 +13,9 @@ const btn = {
 };
 
 export default function ItemActions({ onEdit, onDelete, confirmMessage = "Tem certeza que quer excluir?" }) {
-  const handleDelete = (e) => {
+  const handleDelete = async (e) => {
     e.stopPropagation();
-    if (window.confirm(confirmMessage)) onDelete();
+    if (await confirm(confirmMessage)) onDelete();
   };
   const handleEdit = (e) => {
     e.stopPropagation();

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import PageHeader from "../components/ui/PageHeader";
 import { supabase } from "../lib/supabase";
 import { toast } from "../lib/toast";
+import { confirm } from "../lib/confirm";
 
 import { OPEN_WHEN } from "../content/openWhen";
 
@@ -55,7 +56,7 @@ export default function AbrirQuandoPage() {
 
   const limparCarta = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm("Apagar o conteúdo desta carta?")) return;
+    if (!(await confirm("Apagar o conteúdo desta carta?", { confirmLabel: "apagar" }))) return;
     const previous = cartas[id];
     setCartas(prev => {
       const next = { ...prev };

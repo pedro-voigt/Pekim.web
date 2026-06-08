@@ -4,6 +4,7 @@ import useMediaQuery from "./hooks/useMediaQuery";
 import useSession from "./hooks/useSession";
 import { supabase } from "./lib/supabase";
 import Toaster from "./components/ui/Toaster";
+import ConfirmDialog from "./components/ui/ConfirmDialog";
 import Login from "./components/Login";
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────
@@ -325,6 +326,7 @@ export default function App() {
       )}
 
       <Toaster />
+      <ConfirmDialog />
     </>
   );
 }
