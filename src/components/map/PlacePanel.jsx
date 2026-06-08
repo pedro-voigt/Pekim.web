@@ -58,8 +58,12 @@ const labelStyle = {
   color: "#5a8060", fontFamily: "'Cormorant Garamond', serif",
 };
 
-export default function PlacePanel({ place, onClose }) {
+export default function PlacePanel({ place, onClose, onEdit, onDelete }) {
   if (!place) return null;
+
+  const handleDelete = () => {
+    if (window.confirm(`Excluir "${place.nome}" do mapa?`)) onDelete();
+  };
 
   const periodo = [fmt(place.data_inicio), fmt(place.data_fim)].filter(Boolean).join(" — ");
   const fotos = Array.isArray(place.fotos) ? place.fotos : [];
@@ -143,6 +147,34 @@ export default function PlacePanel({ place, onClose }) {
         viagem {MODO_LABEL[place.modo] || place.modo}
         {paradas > 0 ? ` · ${paradas} paradas` : ""}
       </div>
+
+      {(onEdit || onDelete) && (
+        <div style={{
+          display: "flex", gap: "20px", marginTop: "24px",
+          paddingTop: "16px", borderTop: "1px solid #D8D9B0",
+        }}>
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              style={{
+                fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "14px",
+                color: "#2e5c3a", background: "transparent", border: "none",
+                padding: 0, cursor: "pointer",
+              }}
+            >editar</button>
+          )}
+          {onDelete && (
+            <button
+              onClick={handleDelete}
+              style={{
+                fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "14px",
+                color: "#D3968C", background: "transparent", border: "none",
+                padding: 0, cursor: "pointer",
+              }}
+            >excluir</button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

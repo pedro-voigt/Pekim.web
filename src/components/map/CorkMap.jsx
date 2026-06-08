@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import { useState } from "react";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-import { supabase } from "../../lib/supabase";
-import { toast } from "../../lib/toast";
+import useCollection from "../../hooks/useCollection";
 import { makePinIcon } from "./PinIcon";
 import PlacePanel from "./PlacePanel";
+import PlaceForm from "./PlaceForm";
 import TravelRoute from "./TravelRoute";
 import PinnedPolaroid from "./PinnedPolaroid";
 
@@ -79,36 +79,90 @@ const vignetteStyle = {
     "radial-gradient(ellipse at center, transparent 55%, rgba(46,29,12,0.30) 100%)",
 };
 
-export default function CorkMap() {
-  const [lugares, setLugares] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+// Botão/etiqueta sobre o mapa (acima da vinheta, abaixo dos painéis em 600).
+const overlayBtn = {
+  fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "13px",
+  color: "#0A3323", background: "#F7F4D5",
+  border: "1px solid #0A3323", padding: "7px 14px",
+  cursor: "pointer", boxShadow: "0 2px 8px -2px rgba(0,0,0,0.4)",
+};
 
-  useEffect(() => {
-    supabase.from("lugares").select("*").order("created_at", { ascending: true })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("[lugares]", error);
-          toast.error("não foi possível carregar os lugares");
-          return;
-        }
-        if (data) setLugares(data);
-      })
-      .catch((err) => {
-        console.error("[lugares fetch]", err);
-        toast.error("não foi possível carregar os lugares");
-      });
-  }, []);
+// Captura cliques no mapa enquanto está no modo "fixar lugar".
+function ClickToPlace({ active, onPick }) {
+  useMapEvents({
+    click(e) {
+      if (active) onPick(e.latlng);
+    },
+  });
+  return null;
+}
+
+export default function CorkMap() {
+  const { items: lugares, create, update, remove, setItems } = useCollection("lugares", {
+    order: { column: "created_at", ascending: true },
+    messages: {
+      load: "não foi possível carregar os lugares",
+      create: "não foi possível guardar o lugar",
+      update: "não foi possível atualizar o lugar",
+      remove: "não foi possível excluir o lugar",
+    },
+  });
+
+  const [selectedId, setSelectedId] = useState(null);
+  const [placing, setPlacing] = useState(false); // aguardando clique no mapa
+  const [draft, setDraft] = useState(null);       // lugar em criação/edição
 
   const selected = lugares.find((l) => l.id === selectedId) || null;
+  const formOpen = draft !== null;
+  const panelOpen = selected && !formOpen;
 
   // guarda o GeoJSON calculado na lista em memória → re-clicar = cache hit (sem ORS)
   const handleRouteLoaded = (id, geojson) =>
-    setLugares((prev) => prev.map((l) => (l.id === id ? { ...l, rota_geojson: geojson } : l)));
+    setItems((prev) => prev.map((l) => (l.id === id ? { ...l, rota_geojson: geojson } : l)));
+
+  const startAdd = () => {
+    setSelectedId(null);
+    setDraft(null);
+    setPlacing(true);
+  };
+
+  const handlePick = ({ lat, lng }) => {
+    setDraft({ lat, lng }); // novo lugar (sem id)
+    setPlacing(false);
+  };
+
+  const startEdit = () => {
+    if (selected) setDraft({ ...selected });
+  };
+
+  const cancelForm = () => {
+    setDraft(null);
+    setPlacing(false);
+  };
+
+  const saveDraft = async (values) => {
+    if (draft.id) {
+      const ok = await update(draft.id, values);
+      if (ok) setDraft(null);
+      return ok;
+    }
+    const created = await create({ ...values, lat: draft.lat, lng: draft.lng });
+    if (created) {
+      setDraft(null);
+      setSelectedId(created.id);
+    }
+    return !!created;
+  };
+
+  const deleteSelected = async () => {
+    const ok = await remove(selected.id);
+    if (ok) setSelectedId(null);
+  };
 
   return (
     <div style={frameStyle}>
       <div style={corkStyle}>
-        <div style={mapWrapStyle}>
+        <div style={{ ...mapWrapStyle, cursor: placing ? "crosshair" : undefined }}>
           <MapContainer
             center={INITIAL_CENTER}
             zoom={INITIAL_ZOOM}
@@ -119,20 +173,70 @@ export default function CorkMap() {
             style={{ width: "100%", height: "100%", background: "#EEEBd8" }}
           >
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+            <ClickToPlace active={placing} onPick={handlePick} />
             {lugares.map((l) => (
               <Marker
                 key={l.id}
                 position={[l.lat, l.lng]}
                 icon={makePinIcon({ active: l.id === selectedId })}
-                eventHandlers={{ click: () => setSelectedId(l.id) }}
+                eventHandlers={{ click: () => { if (!placing) setSelectedId(l.id); } }}
               />
             ))}
-            {selected && (
+            {/* alfinete provisório do lugar sendo criado */}
+            {draft && !draft.id && (
+              <Marker position={[draft.lat, draft.lng]} icon={makePinIcon({ active: true })} />
+            )}
+            {panelOpen && (
               <TravelRoute key={selected.id} place={selected} onLoaded={handleRouteLoaded} />
             )}
           </MapContainer>
           <div style={vignetteStyle} />
-          <PlacePanel place={selected} onClose={() => setSelectedId(null)} />
+
+          {/* Modo "fixar lugar": etiqueta de instrução + cancelar */}
+          {placing && (
+            <div style={{
+              position: "absolute", top: "12px", left: "50%", transform: "translateX(-50%)",
+              zIndex: 550, display: "flex", alignItems: "center", gap: "12px",
+              ...overlayBtn, cursor: "default",
+            }}>
+              clique no mapa para fixar o lugar
+              <button
+                onClick={cancelForm}
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "13px",
+                  color: "#D3968C", background: "transparent", border: "none",
+                  padding: 0, cursor: "pointer",
+                }}
+              >cancelar</button>
+            </div>
+          )}
+
+          {/* Botão adicionar (só no modo de visualização) */}
+          {!placing && !formOpen && !selected && (
+            <button
+              onClick={startAdd}
+              style={{ position: "absolute", top: "12px", right: "12px", zIndex: 550, ...overlayBtn }}
+            >+ adicionar lugar</button>
+          )}
+
+          {panelOpen && (
+            <PlacePanel
+              place={selected}
+              onClose={() => setSelectedId(null)}
+              onEdit={startEdit}
+              onDelete={deleteSelected}
+            />
+          )}
+
+          {formOpen && (
+            <PlaceForm
+              key={draft.id || "new"}
+              place={draft}
+              coords={{ lat: draft.lat, lng: draft.lng }}
+              onSave={saveDraft}
+              onCancel={cancelForm}
+            />
+          )}
         </div>
 
         {/* Polaroids decorativas presas na borda (não somem ao arrastar o mapa).
@@ -142,7 +246,7 @@ export default function CorkMap() {
           rotate={5}
           pin="tape"
           style={{ top: "-6px", right: "8px" }}
-          hidden={!!selected}        /* some quando o painel abre (evita ficar sob a aba) */
+          hidden={panelOpen || formOpen}  /* some quando um painel abre (evita ficar sob a aba) */
         />
         <PinnedPolaroid
           caption="a serra"
