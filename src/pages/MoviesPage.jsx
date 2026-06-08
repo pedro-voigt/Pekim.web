@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-import { supabase } from "../lib/supabase";
-import { toast } from "../lib/toast";
+import useCollection from "../hooks/useCollection";
 import PageHeader from "../components/ui/PageHeader";
 import PageContainer from "../components/ui/PageContainer";
 import Collapsible from "../components/ui/Collapsible";
 import FilterChip from "../components/ui/FilterChip";
 import StarRating from "../components/ui/StarRating";
 import ItemActions from "../components/ui/ItemActions";
+import FormToggleButton from "../components/ui/FormToggleButton";
+import FormActions from "../components/ui/FormActions";
+import LoadingDots from "../components/ui/LoadingDots";
 import { Label, Input, Select } from "../components/ui/Field";
 
 const CATEGORIES = ["Romance", "Nossa vibe", "Comédia", "Filmes tristes", "Comfort movies"];
@@ -15,30 +17,18 @@ const CATEGORIES = ["Romance", "Nossa vibe", "Comédia", "Filmes tristes", "Comf
 const EMPTY = { title: "", year: "", category: "Romance", note: "" };
 
 export default function MoviesPage() {
-  const [movies, setMovies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { items: movies, loading, create, update, remove } = useCollection("movies", {
+    messages: {
+      load: "não foi possível carregar os filmes",
+      create: "não foi possível guardar o filme",
+      update: "não foi possível atualizar o filme",
+    },
+  });
   const [filter, setFilter] = useState("Todos");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY);
-
-  useEffect(() => {
-    supabase.from("movies").select("*").order("id")
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("[movies]", error);
-          toast.error("não foi possível carregar os filmes");
-        }
-        if (data) setMovies(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("[movies fetch]", err);
-        toast.error("não foi possível carregar os filmes");
-        setLoading(false);
-      });
-  }, []);
 
   const filtered = filter === "Todos" ? movies : movies.filter(m => m.category === filter);
   const watched = movies.filter(m => m.watched).length;
@@ -69,64 +59,18 @@ export default function MoviesPage() {
       category: form.category,
       note: form.note,
     };
-    if (editingId) {
-      const previous = movies.find(m => m.id === editingId);
-      setMovies(prev => prev.map(m => m.id === editingId ? { ...m, ...payload } : m));
-      const { error } = await supabase.from("movies").update(payload).eq("id", editingId);
-      if (error) {
-        console.error("[movies update]", error);
-        toast.error("não foi possível atualizar o filme");
-        setMovies(prev => prev.map(m => m.id === editingId ? previous : m));
-        return;
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("movies")
-        .insert({ ...payload, watched: false, rating: null, fav: false })
-        .select().single();
-      if (error || !data) {
-        console.error("[movies insert]", error);
-        toast.error("não foi possível guardar o filme");
-        return;
-      }
-      setMovies(prev => [...prev, data]);
-    }
-    setForm(EMPTY);
-    setEditingId(null);
-    setFormOpen(false);
+    const ok = editingId
+      ? await update(editingId, payload)
+      : await create({ ...payload, watched: false, rating: null, fav: false });
+    if (!ok) return;
+    cancelarEdicao();
   };
 
-  const excluir = async (movie) => {
-    const previous = movies;
-    setMovies(prev => prev.filter(m => m.id !== movie.id));
-    const { error } = await supabase.from("movies").delete().eq("id", movie.id);
-    if (error) {
-      console.error("[movies delete]", error);
-      toast.error("não foi possível excluir");
-      setMovies(previous);
-    }
-  };
+  const toggleWatched = (movie) =>
+    update(movie.id, { watched: !movie.watched }, { errorMessage: "não foi possível atualizar" });
 
-  const toggleWatched = async (movie) => {
-    const watched = !movie.watched;
-    setMovies(prev => prev.map(m => m.id === movie.id ? { ...m, watched } : m));
-    const { error } = await supabase.from("movies").update({ watched }).eq("id", movie.id);
-    if (error) {
-      console.error("[movies toggle]", error);
-      toast.error("não foi possível atualizar");
-      setMovies(prev => prev.map(m => m.id === movie.id ? { ...m, watched: !watched } : m));
-    }
-  };
-
-  const saveRating = async (movie, rating) => {
-    setMovies(prev => prev.map(m => m.id === movie.id ? { ...m, rating } : m));
-    const { error } = await supabase.from("movies").update({ rating }).eq("id", movie.id);
-    if (error) {
-      console.error("[movies rating]", error);
-      toast.error("não foi possível salvar a nota");
-      setMovies(prev => prev.map(m => m.id === movie.id ? { ...m, rating: movie.rating } : m));
-    }
-  };
+  const saveRating = (movie, rating) =>
+    update(movie.id, { rating }, { errorMessage: "não foi possível salvar a nota" });
 
   const isEditing = editingId !== null;
 
@@ -136,21 +80,13 @@ export default function MoviesPage() {
 
       {/* Formulário */}
       <div style={{ marginBottom: "16px" }}>
-        <button
+        <FormToggleButton
+          open={formOpen}
+          editing={isEditing}
           onClick={() => isEditing ? cancelarEdicao() : setFormOpen(o => !o)}
-          style={{
-            display: "flex", alignItems: "center", gap: "8px",
-            fontFamily: "'Cormorant Garamond', serif",
-            fontStyle: "italic", fontSize: "14px",
-            color: (formOpen || isEditing) ? "#F7F4D5" : "#2e5c3a",
-            background: (formOpen || isEditing) ? "#0A3323" : "transparent",
-            border: "1px solid #0A3323", padding: "8px 18px",
-            cursor: "pointer", transition: "all 0.2s",
-          }}
-        >
-          <span style={{ fontSize: "16px", lineHeight: 1 }}>{(formOpen || isEditing) ? "−" : "+"}</span>
-          {isEditing ? "editando filme" : "adicionar filme ou série"}
-        </button>
+          addLabel="adicionar filme ou série"
+          editLabel="editando filme"
+        />
         <Collapsible open={formOpen} maxHeight="420px">
           <div data-form-grid style={{
             background: "#F7F4D5", padding: "28px 24px", marginTop: "2px",
@@ -174,30 +110,12 @@ export default function MoviesPage() {
               <Label>nota</Label>
               <Input value={form.note} onChange={set("note")} placeholder="Uma frase sobre o filme..." />
             </div>
-            <div style={{ display: "flex", gap: "12px" }}>
-              <button
-                onClick={salvar}
-                style={{
-                  fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "14px",
-                  color: form.title.trim() ? "#F7F4D5" : "#a8bc80",
-                  background: form.title.trim() ? "#0A3323" : "transparent",
-                  border: `1px solid ${form.title.trim() ? "#0A3323" : "#D8D9B0"}`,
-                  padding: "10px 28px",
-                  cursor: form.title.trim() ? "pointer" : "default",
-                  transition: "all 0.2s",
-                }}
-              >{isEditing ? "atualizar" : "guardar"}</button>
-              {isEditing && (
-                <button
-                  onClick={cancelarEdicao}
-                  style={{
-                    fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "14px",
-                    color: "#5a8060", background: "transparent",
-                    border: "none", padding: "10px 8px", cursor: "pointer",
-                  }}
-                >cancelar</button>
-              )}
-            </div>
+            <FormActions
+              canSave={!!form.title.trim()}
+              editing={isEditing}
+              onSave={salvar}
+              onCancel={cancelarEdicao}
+            />
           </div>
         </Collapsible>
       </div>
@@ -232,7 +150,7 @@ export default function MoviesPage() {
 
       {/* Lista */}
       {loading ? (
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "16px", color: "#a8bc80", textAlign: "center", padding: "48px 0", animation: "pulse 1.2s infinite" }}>✦ ✦ ✦</div>
+        <LoadingDots />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
           {filtered.map(m => (
@@ -277,7 +195,7 @@ export default function MoviesPage() {
               </div>
               <ItemActions
                 onEdit={() => iniciarEdicao(m)}
-                onDelete={() => excluir(m)}
+                onDelete={() => remove(m.id)}
                 confirmMessage={`Excluir "${m.title}"?`}
               />
             </div>

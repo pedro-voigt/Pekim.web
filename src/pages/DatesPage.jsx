@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-import { supabase } from "../lib/supabase";
-import { toast } from "../lib/toast";
+import useCollection from "../hooks/useCollection";
 import PageHeader from "../components/ui/PageHeader";
 import PageContainer from "../components/ui/PageContainer";
 import Collapsible from "../components/ui/Collapsible";
 import FilterChip from "../components/ui/FilterChip";
 import StatusBadge from "../components/ui/StatusBadge";
 import ItemActions from "../components/ui/ItemActions";
+import FormToggleButton from "../components/ui/FormToggleButton";
+import FormActions from "../components/ui/FormActions";
+import LoadingDots from "../components/ui/LoadingDots";
 import { Label, Input, Select } from "../components/ui/Field";
 
 const CATEGORIES = ["Em casa", "Baratos", "Românticos", "Aventura", "Aesthetic", "Diferentes"];
@@ -17,31 +19,19 @@ const STATUS_CYCLE = { "Quero fazer": "Planejado", "Planejado": "Feito", "Feito"
 const EMPTY = { name: "", description: "", cost: "", vibe: "", category: "Em casa", planning: "Baixo" };
 
 export default function DatesPage() {
-  const [dates, setDates] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { items: dates, loading, create, update, remove } = useCollection("dates", {
+    messages: {
+      load: "não foi possível carregar os dates",
+      create: "não foi possível guardar o date",
+      update: "não foi possível atualizar o date",
+    },
+  });
   const [filter, setFilter] = useState("Todos");
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY);
-
-  useEffect(() => {
-    supabase.from("dates").select("*").order("id")
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("[dates]", error);
-          toast.error("não foi possível carregar os dates");
-        }
-        if (data) setDates(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("[dates fetch]", err);
-        toast.error("não foi possível carregar os dates");
-        setLoading(false);
-      });
-  }, []);
 
   const filtered = dates.filter(d => {
     const catOk = filter === "Todos" || d.category === filter;
@@ -73,55 +63,17 @@ export default function DatesPage() {
 
   const salvar = async () => {
     if (!form.name.trim()) return;
-    if (editingId) {
-      const patch = { ...form, name: form.name.trim() };
-      const previous = dates.find(d => d.id === editingId);
-      setDates(prev => prev.map(d => d.id === editingId ? { ...d, ...patch } : d));
-      const { error } = await supabase.from("dates").update(patch).eq("id", editingId);
-      if (error) {
-        console.error("[dates update]", error);
-        toast.error("não foi possível atualizar o date");
-        setDates(prev => prev.map(d => d.id === editingId ? previous : d));
-        return;
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("dates")
-        .insert({ ...form, name: form.name.trim(), status: "Quero fazer" })
-        .select().single();
-      if (error || !data) {
-        console.error("[dates insert]", error);
-        toast.error("não foi possível guardar o date");
-        return;
-      }
-      setDates(prev => [...prev, data]);
-    }
-    setForm(EMPTY);
-    setEditingId(null);
-    setFormOpen(false);
+    const payload = { ...form, name: form.name.trim() };
+    const ok = editingId
+      ? await update(editingId, payload)
+      : await create({ ...payload, status: "Quero fazer" });
+    if (!ok) return;
+    cancelarEdicao();
   };
 
-  const excluir = async (date) => {
-    const previous = dates;
-    setDates(prev => prev.filter(d => d.id !== date.id));
-    const { error } = await supabase.from("dates").delete().eq("id", date.id);
-    if (error) {
-      console.error("[dates delete]", error);
-      toast.error("não foi possível excluir");
-      setDates(previous);
-    }
-  };
-
-  const toggleStatus = async (date) => {
-    const next = STATUS_CYCLE[date.status] || "Quero fazer";
-    setDates(prev => prev.map(d => d.id === date.id ? { ...d, status: next } : d));
-    const { error } = await supabase.from("dates").update({ status: next }).eq("id", date.id);
-    if (error) {
-      console.error("[dates toggle]", error);
-      toast.error("não foi possível mudar o status");
-      setDates(prev => prev.map(d => d.id === date.id ? { ...d, status: date.status } : d));
-    }
-  };
+  const toggleStatus = (date) =>
+    update(date.id, { status: STATUS_CYCLE[date.status] || "Quero fazer" },
+      { errorMessage: "não foi possível mudar o status" });
 
   const isEditing = editingId !== null;
 
@@ -131,21 +83,13 @@ export default function DatesPage() {
 
       {/* Formulário */}
       <div style={{ marginBottom: "16px" }}>
-        <button
+        <FormToggleButton
+          open={formOpen}
+          editing={isEditing}
           onClick={() => isEditing ? cancelarEdicao() : setFormOpen(o => !o)}
-          style={{
-            display: "flex", alignItems: "center", gap: "8px",
-            fontFamily: "'Cormorant Garamond', serif",
-            fontStyle: "italic", fontSize: "14px",
-            color: (formOpen || isEditing) ? "#F7F4D5" : "#2e5c3a",
-            background: (formOpen || isEditing) ? "#0A3323" : "transparent",
-            border: "1px solid #0A3323", padding: "8px 18px",
-            cursor: "pointer", transition: "all 0.2s",
-          }}
-        >
-          <span style={{ fontSize: "16px", lineHeight: 1 }}>{(formOpen || isEditing) ? "−" : "+"}</span>
-          {isEditing ? "editando date" : "adicionar date"}
-        </button>
+          addLabel="adicionar date"
+          editLabel="editando date"
+        />
         <Collapsible open={formOpen} maxHeight="520px">
           <div data-form-grid style={{
             background: "#F7F4D5", padding: "28px 24px", marginTop: "2px",
@@ -179,30 +123,12 @@ export default function DatesPage() {
                 {PLANNINGS.map(p => <option key={p}>{p}</option>)}
               </Select>
             </div>
-            <div style={{ display: "flex", gap: "12px" }}>
-              <button
-                onClick={salvar}
-                style={{
-                  fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "14px",
-                  color: form.name.trim() ? "#F7F4D5" : "#a8bc80",
-                  background: form.name.trim() ? "#0A3323" : "transparent",
-                  border: `1px solid ${form.name.trim() ? "#0A3323" : "#D8D9B0"}`,
-                  padding: "10px 28px",
-                  cursor: form.name.trim() ? "pointer" : "default",
-                  transition: "all 0.2s",
-                }}
-              >{isEditing ? "atualizar" : "guardar"}</button>
-              {isEditing && (
-                <button
-                  onClick={cancelarEdicao}
-                  style={{
-                    fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "14px",
-                    color: "#5a8060", background: "transparent",
-                    border: "none", padding: "10px 8px", cursor: "pointer",
-                  }}
-                >cancelar</button>
-              )}
-            </div>
+            <FormActions
+              canSave={!!form.name.trim()}
+              editing={isEditing}
+              onSave={salvar}
+              onCancel={cancelarEdicao}
+            />
           </div>
         </Collapsible>
       </div>
@@ -244,7 +170,7 @@ export default function DatesPage() {
 
       {/* Lista */}
       {loading ? (
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "16px", color: "#a8bc80", textAlign: "center", padding: "48px 0", animation: "pulse 1.2s infinite" }}>✦ ✦ ✦</div>
+        <LoadingDots />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "2px" }}>
           {filtered.map(d => (
@@ -269,7 +195,7 @@ export default function DatesPage() {
                   </button>
                   <ItemActions
                     onEdit={() => iniciarEdicao(d)}
-                    onDelete={() => excluir(d)}
+                    onDelete={() => remove(d.id)}
                     confirmMessage={`Excluir "${d.name}"?`}
                   />
                 </div>
