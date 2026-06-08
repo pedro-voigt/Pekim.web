@@ -21,7 +21,7 @@ export default function HomePage({ onNavigate }) {
     let cancelled = false;
     Promise.all([
       supabase.from("dates").select("id", { count: "exact", head: true }),
-      supabase.from("movies").select("watched"),
+      supabase.from("movies").select("id", { count: "exact", head: true }).eq("watched", true),
       supabase.from("memories").select("title, description, date").order("date", { ascending: false }).limit(1),
       supabase.from("memories").select("id", { count: "exact", head: true }),
       supabase.from("bucket_list").select("done"),
@@ -29,7 +29,7 @@ export default function HomePage({ onNavigate }) {
       if (cancelled) return;
       setCounts({
         dates: dates.count ?? 0,
-        moviesWatched: (movies.data || []).filter(m => m.watched).length,
+        moviesWatched: movies.count ?? 0,
         memories: memCount.count ?? 0,
         bucketDone: (bucket.data || []).filter(b => b.done).length,
         bucketTotal: (bucket.data || []).length,

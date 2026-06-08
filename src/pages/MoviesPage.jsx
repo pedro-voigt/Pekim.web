@@ -72,6 +72,9 @@ export default function MoviesPage() {
   const saveRating = (movie, rating) =>
     update(movie.id, { rating }, { errorMessage: "não foi possível salvar a nota" });
 
+  const toggleFav = (movie) =>
+    update(movie.id, { fav: !movie.fav }, { errorMessage: "não foi possível favoritar" });
+
   const isEditing = editingId !== null;
 
   return (
@@ -193,6 +196,17 @@ export default function MoviesPage() {
                   <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "12px", color: "#a8bc80" }}>na fila ✦</span>
                 )}
               </div>
+              <button
+                onClick={() => toggleFav(m)}
+                title={m.fav ? "Desmarcar favorito" : "Marcar como favorito"}
+                aria-pressed={m.fav}
+                style={{
+                  background: "transparent", border: "none", cursor: "pointer",
+                  padding: "2px 4px", flexShrink: 0, lineHeight: 1,
+                  fontSize: "18px", color: m.fav ? "#D3968C" : "#c7cbb0",
+                  transition: "color 0.2s",
+                }}
+              >{m.fav ? "★" : "☆"}</button>
               <ItemActions
                 onEdit={() => iniciarEdicao(m)}
                 onDelete={() => remove(m.id)}

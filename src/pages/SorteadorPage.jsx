@@ -21,6 +21,13 @@ async function fetchPool(key) {
   return ASSUNTOS;
 }
 
+// Sorteio fora do componente: Math.random não pode rodar no caminho de render.
+function sortear(pool) {
+  return pool.length > 0
+    ? pool[Math.floor(Math.random() * pool.length)]
+    : "Nada na fila por agora ✦";
+}
+
 export default function SorteadorPage() {
   const [mode, setMode] = useState(null);
   const [result, setResult] = useState(null);
@@ -36,11 +43,7 @@ export default function SorteadorPage() {
       new Promise(r => setTimeout(r, 1200)),
     ]);
 
-    setResult(
-      pool.length > 0
-        ? pool[Math.floor(Math.random() * pool.length)]
-        : "Nada na fila por agora ✦"
-    );
+    setResult(sortear(pool));
     setSpinning(false);
   };
 
