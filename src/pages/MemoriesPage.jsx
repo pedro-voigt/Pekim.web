@@ -9,7 +9,8 @@ import FormToggleButton from "../components/ui/FormToggleButton";
 import FormActions from "../components/ui/FormActions";
 import LoadingDots from "../components/ui/LoadingDots";
 import EmptyState from "../components/ui/EmptyState";
-import { Label, Input, Textarea } from "../components/ui/Field";
+import Avatar from "../components/ui/Avatar";
+import { Label, Input, Select, Textarea } from "../components/ui/Field";
 
 // Leaflet (~150 KB) vive numa aba pouco usada → carrega sob demanda.
 const CorkMap = lazy(() => import("../components/map/CorkMap"));
@@ -22,6 +23,7 @@ const EMPTY = {
   description: "",
   emoji: "✦",
   color: COLORS[0],
+  autor: "",
 };
 
 const byDate = (a, b) => (a.date || "").localeCompare(b.date || "");
@@ -51,6 +53,7 @@ export default function MemoriesPage() {
       description: m.description || "",
       emoji: m.emoji || "✦",
       color: m.color || COLORS[0],
+      autor: m.autor || "",
     });
     setFormOpen(true);
   };
@@ -63,7 +66,7 @@ export default function MemoriesPage() {
 
   const salvar = async () => {
     if (!form.title.trim()) return;
-    const payload = { ...form, title: form.title.trim() };
+    const payload = { ...form, title: form.title.trim(), autor: form.autor || null };
     const ok = editingId
       ? await update(editingId, payload)
       : await create(payload);
@@ -130,6 +133,14 @@ export default function MemoriesPage() {
             <div>
               <Label>emoji</Label>
               <Input value={form.emoji} onChange={set("emoji")} maxLength={2} placeholder="☕" />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <Label>autor</Label>
+              <Select value={form.autor} onChange={set("autor")}>
+                <option value="">—</option>
+                <option value="Pedro">Pedro</option>
+                <option value="Kim">Kim</option>
+              </Select>
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               <Label>descrição</Label>
@@ -235,6 +246,15 @@ export default function MemoriesPage() {
                   lineHeight: 1.7, margin: 0,
                   fontStyle: "italic",
                 }}>{m.description}</p>
+                {m.autor && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "14px" }}>
+                    <Avatar name={m.autor} size={20} />
+                    <span style={{
+                      fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic",
+                      fontSize: "12px", color: "#a8bc80",
+                    }}>{m.autor}</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}

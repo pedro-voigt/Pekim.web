@@ -3,6 +3,7 @@
 // Passo 6 adiciona a rota desenhada no mapa (aqui já mostramos o resumo).
 
 import { confirm } from "../../lib/confirm";
+import Avatar from "../ui/Avatar";
 
 const fmt = (d) =>
   d
@@ -12,24 +13,6 @@ const fmt = (d) =>
     : null;
 
 const MODO_LABEL = { driving: "de carro", flight: "de avião", walking: "a pé" };
-
-// Avatar estilo "iniciais": Pedro → verde, Kim → rosa (paleta do projeto).
-function Avatar({ name }) {
-  const initial = (name?.[0] || "?").toUpperCase();
-  const bg = name === "Kim" ? "#D3968C" : "#0A3323";
-  return (
-    <span
-      title={name}
-      style={{
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        width: "24px", height: "24px", borderRadius: "50%",
-        background: bg, color: "#F7F4D5",
-        fontFamily: "'Cormorant Garamond', serif", fontSize: "12px", fontWeight: 600,
-        flexShrink: 0,
-      }}
-    >{initial}</span>
-  );
-}
 
 // Foto presa estilo polaroid (moldura branca, leve rotação alternada, sombra).
 function Polaroid({ url, i }) {

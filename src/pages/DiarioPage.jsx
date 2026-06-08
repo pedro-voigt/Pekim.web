@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import PageHeader from "../components/ui/PageHeader";
 import PageContainer from "../components/ui/PageContainer";
 import ItemActions from "../components/ui/ItemActions";
+import Avatar from "../components/ui/Avatar";
 import { Textarea } from "../components/ui/Field";
 import { supabase } from "../lib/supabase";
 import { toast } from "../lib/toast";
@@ -284,11 +285,14 @@ export default function DiarioPage() {
             lineHeight: 1.8, margin: "0 0 8px",
             whiteSpace: "pre-wrap",
           }}>{e.content}</p>
-          <span style={{
-            fontFamily: "'Cormorant Garamond', serif",
-            fontStyle: "italic",
-            fontSize: "12px", color: "#a8bc80",
-          }}>— {e.author}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Avatar name={e.author} size={22} />
+            <span style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontStyle: "italic",
+              fontSize: "12px", color: "#a8bc80",
+            }}>{e.author}</span>
+          </div>
         </div>
       ))}
     </PageContainer>
