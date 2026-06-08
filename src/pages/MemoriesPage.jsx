@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 
 import useCollection from "../hooks/useCollection";
 import PageHeader from "../components/ui/PageHeader";
@@ -10,7 +10,9 @@ import FormActions from "../components/ui/FormActions";
 import LoadingDots from "../components/ui/LoadingDots";
 import EmptyState from "../components/ui/EmptyState";
 import { Label, Input, Textarea } from "../components/ui/Field";
-import CorkMap from "../components/map/CorkMap";
+
+// Leaflet (~150 KB) vive numa aba pouco usada → carrega sob demanda.
+const CorkMap = lazy(() => import("../components/map/CorkMap"));
 
 const COLORS = ["#c9ddb0", "#b5c490", "#a8d4b8", "#D3968C", "#b8d4d8"];
 
@@ -96,7 +98,11 @@ export default function MemoriesPage() {
         ))}
       </div>
 
-      {tab === "map" && <CorkMap />}
+      {tab === "map" && (
+        <Suspense fallback={<LoadingDots size="15px" />}>
+          <CorkMap />
+        </Suspense>
+      )}
 
       {tab === "timeline" && (<>
       {/* Formulário */}
