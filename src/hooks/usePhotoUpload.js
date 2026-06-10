@@ -27,11 +27,18 @@ export default function usePhotoUpload(initial = [], folder = "") {
 
   const removeFoto = (url) => setFotos(prev => prev.filter(u => u !== url));
 
+  // Reinicia para um novo conjunto (ex.: ao começar a editar outro registro num
+  // formulário que não remonta). Redefine o "original" para o novo baseline.
+  const reset = (list = []) => {
+    setFotos(list);
+    originalRef.current = list;
+  };
+
   const cleanupSaved = () =>
     originalRef.current.filter(u => !fotos.includes(u)).forEach(deleteImage);
 
   const cleanupCanceled = () =>
     fotos.filter(u => !originalRef.current.includes(u)).forEach(deleteImage);
 
-  return { fotos, uploading, addFiles, removeFoto, cleanupSaved, cleanupCanceled };
+  return { fotos, uploading, addFiles, removeFoto, reset, cleanupSaved, cleanupCanceled };
 }

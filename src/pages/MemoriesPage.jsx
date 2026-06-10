@@ -10,6 +10,9 @@ import FormActions from "../components/ui/FormActions";
 import LoadingDots from "../components/ui/LoadingDots";
 import EmptyState from "../components/ui/EmptyState";
 import Avatar from "../components/ui/Avatar";
+import PhotoUploader from "../components/ui/PhotoUploader";
+import usePhotoUpload from "../hooks/usePhotoUpload";
+import { deleteImage } from "../lib/uploadImage";
 import { Label, Input, Select, Textarea } from "../components/ui/Field";
 
 // Leaflet (~150 KB) vive numa aba pouco usada → carrega sob demanda.
@@ -42,8 +45,16 @@ export default function MemoriesPage() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [tab, setTab] = useState("timeline"); // "timeline" | "map"
+  const photo = usePhotoUpload([], "memorias");
 
   const set = field => e => setForm(f => ({ ...f, [field]: e.target.value }));
+
+  const resetForm = () => {
+    setEditingId(null);
+    setForm(EMPTY);
+    setFormOpen(false);
+    photo.reset([]);
+  };
 
   const iniciarEdicao = (m) => {
     setEditingId(m.id);
@@ -55,23 +66,30 @@ export default function MemoriesPage() {
       color: m.color || COLORS[0],
       autor: m.autor || "",
     });
+    photo.reset(Array.isArray(m.fotos) ? m.fotos : []);
     setFormOpen(true);
   };
 
   const cancelarEdicao = () => {
-    setEditingId(null);
-    setForm(EMPTY);
-    setFormOpen(false);
+    photo.cleanupCanceled();   // apaga as enviadas e nunca salvas
+    resetForm();
   };
 
   const salvar = async () => {
     if (!form.title.trim()) return;
-    const payload = { ...form, title: form.title.trim(), autor: form.autor || null };
+    const payload = { ...form, title: form.title.trim(), autor: form.autor || null, fotos: photo.fotos };
     const ok = editingId
       ? await update(editingId, payload)
       : await create(payload);
     if (!ok) return;
-    cancelarEdicao();
+    photo.cleanupSaved();      // apaga as removidas e salvas
+    resetForm();
+  };
+
+  const excluir = async (m) => {
+    const fotos = Array.isArray(m.fotos) ? m.fotos : [];
+    const ok = await remove(m.id);
+    if (ok) fotos.forEach(deleteImage);   // limpa as fotos órfãs no Storage
   };
 
   const isEditing = editingId !== null;
@@ -169,6 +187,9 @@ export default function MemoriesPage() {
                 ))}
               </div>
             </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <PhotoUploader {...photo} />
+            </div>
             <FormActions
               canSave={!!form.title.trim()}
               editing={isEditing}
@@ -236,7 +257,7 @@ export default function MemoriesPage() {
                   </div>
                   <ItemActions
                     onEdit={() => iniciarEdicao(m)}
-                    onDelete={() => remove(m.id)}
+                    onDelete={() => excluir(m)}
                     confirmMessage={`Excluir a memória "${m.title}"?`}
                   />
                 </div>
@@ -246,6 +267,24 @@ export default function MemoriesPage() {
                   lineHeight: 1.7, margin: 0,
                   fontStyle: "italic",
                 }}>{m.description}</p>
+                {Array.isArray(m.fotos) && m.fotos.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "16px" }}>
+                    {m.fotos.map((url) => (
+                      <a key={url} href={url} target="_blank" rel="noreferrer" style={{ display: "block" }}>
+                        <img
+                          src={url}
+                          alt=""
+                          loading="lazy"
+                          style={{
+                            width: "84px", height: "84px", objectFit: "cover",
+                            border: "4px solid #fff", boxShadow: "0 3px 8px rgba(0,0,0,0.18)",
+                            background: "#EEEBd8",
+                          }}
+                        />
+                      </a>
+                    ))}
+                  </div>
+                )}
                 {m.autor && (
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "14px" }}>
                     <Avatar name={m.autor} size={20} />
