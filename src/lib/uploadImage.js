@@ -23,3 +23,13 @@ export async function uploadImage(file, folder = "") {
 
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
+
+// Apaga do Storage o arquivo de uma URL pública (best-effort; erros só logam).
+export async function deleteImage(url) {
+  const marker = `/object/public/${BUCKET}/`;
+  const idx = (url || "").indexOf(marker);
+  if (idx === -1) return;
+  const path = url.slice(idx + marker.length);
+  const { error } = await supabase.storage.from(BUCKET).remove([path]);
+  if (error) console.error("[delete image]", error);
+}

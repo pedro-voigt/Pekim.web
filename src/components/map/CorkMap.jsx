@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 import useCollection from "../../hooks/useCollection";
+import { deleteImage } from "../../lib/uploadImage";
 import { makePinIcon } from "./PinIcon";
 import PlacePanel from "./PlacePanel";
 import PlaceForm from "./PlaceForm";
@@ -155,8 +156,12 @@ export default function CorkMap() {
   };
 
   const deleteSelected = async () => {
+    const fotos = Array.isArray(selected.fotos) ? selected.fotos : [];
     const ok = await remove(selected.id);
-    if (ok) setSelectedId(null);
+    if (ok) {
+      fotos.forEach(deleteImage); // limpa as fotos órfãs no Storage
+      setSelectedId(null);
+    }
   };
 
   return (
