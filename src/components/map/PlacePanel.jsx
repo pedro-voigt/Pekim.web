@@ -43,7 +43,7 @@ const labelStyle = {
   color: "#5a8060", fontFamily: "'Cormorant Garamond', serif",
 };
 
-export default function PlacePanel({ place, onClose, onEdit, onDelete }) {
+export default function PlacePanel({ place, onClose, onEdit, onEditRoute, onDelete }) {
   if (!place) return null;
 
   const handleDelete = async () => {
@@ -147,6 +147,16 @@ export default function PlacePanel({ place, onClose, onEdit, onDelete }) {
                 padding: 0, cursor: "pointer",
               }}
             >editar</button>
+          )}
+          {onEditRoute && (
+            <button
+              onClick={onEditRoute}
+              style={{
+                fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "14px",
+                color: "#2e5c3a", background: "transparent", border: "none",
+                padding: 0, cursor: "pointer",
+              }}
+            >editar rota</button>
           )}
           {onDelete && (
             <button

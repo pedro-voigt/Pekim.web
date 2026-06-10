@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, CircleMarker, Tooltip, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 import useCollection from "../../hooks/useCollection";
@@ -7,6 +7,7 @@ import { deleteImage } from "../../lib/uploadImage";
 import { makePinIcon } from "./PinIcon";
 import PlacePanel from "./PlacePanel";
 import PlaceForm from "./PlaceForm";
+import RoutePanel from "./RoutePanel";
 import TravelRoute from "./TravelRoute";
 import PinnedPolaroid from "./PinnedPolaroid";
 
@@ -112,10 +113,14 @@ export default function CorkMap() {
   const [selectedId, setSelectedId] = useState(null);
   const [placing, setPlacing] = useState(false); // aguardando clique no mapa
   const [draft, setDraft] = useState(null);       // lugar em criação/edição
+  const [routeWaypoints, setRouteWaypoints] = useState(null); // null = não editando rota
+  const [routePlaceId, setRoutePlaceId] = useState(null);
+  const [savingRoute, setSavingRoute] = useState(false);
 
   const selected = lugares.find((l) => l.id === selectedId) || null;
+  const routeEditing = routeWaypoints !== null;
   const formOpen = draft !== null;
-  const panelOpen = selected && !formOpen;
+  const panelOpen = selected && !formOpen && !routeEditing;
 
   // guarda o GeoJSON calculado na lista em memória → re-clicar = cache hit (sem ORS)
   const handleRouteLoaded = (id, geojson) =>
@@ -164,10 +169,59 @@ export default function CorkMap() {
     }
   };
 
+  // ── Edição de rota ──────────────────────────────────────────────────────────
+  const startRouteEdit = () => {
+    if (!selected) return;
+    setRouteWaypoints(Array.isArray(selected.rota) ? selected.rota.map(w => ({ ...w })) : []);
+    setRoutePlaceId(selected.id);
+  };
+
+  const addWaypoint = ({ lat, lng }) =>
+    setRouteWaypoints(prev => [...prev, { nome: `Ponto ${prev.length + 1}`, lat, lng, nota: "" }]);
+
+  const renameWaypoint = (i, nome) =>
+    setRouteWaypoints(prev => prev.map((w, idx) => (idx === i ? { ...w, nome } : w)));
+
+  const removeWaypoint = (i) =>
+    setRouteWaypoints(prev => prev.filter((_, idx) => idx !== i));
+
+  const moveWaypoint = (i, dir) =>
+    setRouteWaypoints(prev => {
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+
+  const cancelRoute = () => {
+    setRouteWaypoints(null);
+    setRoutePlaceId(null);
+  };
+
+  const saveRoute = async () => {
+    setSavingRoute(true);
+    const n = routeWaypoints.length;
+    const rota = routeWaypoints.map((w, i) => ({
+      ...w,
+      nome: (w.nome || "").trim() || `Ponto ${i + 1}`,
+      tipo: i === 0 ? "partida" : i === n - 1 ? "chegada" : "parada",
+    }));
+    // zera o cache → TravelRoute recalcula (ORS) ao reabrir o painel
+    const ok = await update(routePlaceId, { rota, rota_geojson: null });
+    setSavingRoute(false);
+    if (ok) cancelRoute();
+  };
+
+  const handleMapClick = (latlng) => {
+    if (placing) handlePick(latlng);
+    else if (routeEditing) addWaypoint(latlng);
+  };
+
   return (
     <div style={frameStyle}>
       <div style={corkStyle}>
-        <div style={{ ...mapWrapStyle, cursor: placing ? "crosshair" : undefined }}>
+        <div style={{ ...mapWrapStyle, cursor: (placing || routeEditing) ? "crosshair" : undefined }}>
           <MapContainer
             center={INITIAL_CENTER}
             zoom={INITIAL_ZOOM}
@@ -178,13 +232,13 @@ export default function CorkMap() {
             style={{ width: "100%", height: "100%", background: "#EEEBd8" }}
           >
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-            <ClickToPlace active={placing} onPick={handlePick} />
+            <ClickToPlace active={placing || routeEditing} onPick={handleMapClick} />
             {lugares.map((l) => (
               <Marker
                 key={l.id}
                 position={[l.lat, l.lng]}
                 icon={makePinIcon({ active: l.id === selectedId })}
-                eventHandlers={{ click: () => { if (!placing) setSelectedId(l.id); } }}
+                eventHandlers={{ click: () => { if (!placing && !routeEditing) setSelectedId(l.id); } }}
               />
             ))}
             {/* alfinete provisório do lugar sendo criado */}
@@ -193,6 +247,27 @@ export default function CorkMap() {
             )}
             {panelOpen && (
               <TravelRoute key={selected.id} place={selected} onLoaded={handleRouteLoaded} />
+            )}
+            {/* Preview da rota sendo editada: linha reta + pontos numerados */}
+            {routeEditing && routeWaypoints.length > 0 && (
+              <>
+                {routeWaypoints.length > 1 && (
+                  <Polyline
+                    positions={routeWaypoints.map(w => [w.lat, w.lng])}
+                    pathOptions={{ color: "#D3968C", weight: 3, dashArray: "6 7", opacity: 0.9 }}
+                  />
+                )}
+                {routeWaypoints.map((w, i) => (
+                  <CircleMarker
+                    key={i}
+                    center={[w.lat, w.lng]}
+                    radius={9}
+                    pathOptions={{ color: "#0A3323", fillColor: "#F7F4D5", fillOpacity: 1, weight: 2 }}
+                  >
+                    <Tooltip direction="top">{i + 1}. {w.nome || `Ponto ${i + 1}`}</Tooltip>
+                  </CircleMarker>
+                ))}
+              </>
             )}
           </MapContainer>
           <div style={vignetteStyle} />
@@ -216,6 +291,16 @@ export default function CorkMap() {
             </div>
           )}
 
+          {/* Modo "editar rota": etiqueta de instrução no topo */}
+          {routeEditing && (
+            <div style={{
+              position: "absolute", top: "12px", left: "50%", transform: "translateX(-50%)",
+              zIndex: 550, ...overlayBtn, cursor: "default",
+            }}>
+              clique no mapa para adicionar pontos da rota
+            </div>
+          )}
+
           {/* Botão adicionar (só no modo de visualização). Canto inferior-direito:
               o topo tem o zoom do Leaflet (esq.) e a polaroid "nós" (dir.). */}
           {!placing && !formOpen && !selected && (
@@ -230,7 +315,20 @@ export default function CorkMap() {
               place={selected}
               onClose={() => setSelectedId(null)}
               onEdit={startEdit}
+              onEditRoute={startRouteEdit}
               onDelete={deleteSelected}
+            />
+          )}
+
+          {routeEditing && (
+            <RoutePanel
+              waypoints={routeWaypoints}
+              onRename={renameWaypoint}
+              onRemove={removeWaypoint}
+              onMove={moveWaypoint}
+              onSave={saveRoute}
+              onCancel={cancelRoute}
+              saving={savingRoute}
             />
           )}
 
@@ -252,7 +350,7 @@ export default function CorkMap() {
           rotate={5}
           pin="tape"
           style={{ top: "-6px", right: "8px" }}
-          hidden={panelOpen || formOpen}  /* some quando um painel abre (evita ficar sob a aba) */
+          hidden={panelOpen || formOpen || routeEditing}  /* some quando um painel abre */
         />
         <PinnedPolaroid
           caption="a serra"
