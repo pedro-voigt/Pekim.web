@@ -4,7 +4,8 @@ import { Label } from "./Field";
 
 // UI de upload de fotos: thumbnails (com remover) + botão "+ foto".
 // Recebe os valores de usePhotoUpload: { fotos, uploading, addFiles, removeFoto }.
-export default function PhotoUploader({ fotos, uploading, addFiles, removeFoto, label = "fotos" }) {
+// `max`: limita quantas fotos podem ser adicionadas (ex.: 1 para foto única).
+export default function PhotoUploader({ fotos, uploading, addFiles, removeFoto, label = "fotos", max = Infinity }) {
   const fileRef = useRef(null);
 
   const onChange = (e) => {
@@ -42,19 +43,21 @@ export default function PhotoUploader({ fotos, uploading, addFiles, removeFoto, 
             >×</button>
           </div>
         ))}
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          style={{
-            width: "64px", height: "64px",
-            border: "1px dashed #a8bc80", background: "transparent",
-            color: "#5a8060", fontSize: "11px",
-            fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic",
-            cursor: uploading ? "default" : "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >{uploading ? "enviando…" : "+ foto"}</button>
+        {fotos.length < max && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            style={{
+              width: "64px", height: "64px",
+              border: "1px dashed #a8bc80", background: "transparent",
+              color: "#5a8060", fontSize: "11px",
+              fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic",
+              cursor: uploading ? "default" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >{uploading ? "enviando…" : "+ foto"}</button>
+        )}
       </div>
       <input
         ref={fileRef}
