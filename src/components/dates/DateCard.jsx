@@ -109,7 +109,7 @@ export default function DateCard({
   // cards comuns mostram só a vibe, em rose.
   const vibePrefix = date.vibe ? `${date.vibe} · ` : "";
   const eyebrow =
-    role === "hero" ? `${vibePrefix}o nosso sonho` :
+    role === "hero" ? `${vibePrefix}o mais empolgante` :
     role === "rosa" ? `${vibePrefix}o mais fácil de todos` :
     date.vibe || "";
   const eyebrowColor =
@@ -242,7 +242,7 @@ export default function DateCard({
             onClick={handleToggleStatus}
             title="Clique para mudar status"
             aria-label={`Status: ${date.status}. Mudar para próximo.`}
-            style={{ ...CHIP_BASE, ...statusChip(date.status, role), borderRadius: "3px", border: "none", cursor: "pointer" }}
+            style={{ ...CHIP_BASE, ...statusChip(date.status, role), border: "none", cursor: "pointer" }}
           >
             {STATUS_LABEL[date.status] || date.status}
           </button>
