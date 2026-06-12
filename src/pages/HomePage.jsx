@@ -24,14 +24,14 @@ export default function HomePage({ onNavigate }) {
       supabase.from("movies").select("id", { count: "exact", head: true }).eq("watched", true),
       supabase.from("memories").select("title, description, date").order("date", { ascending: false }).limit(1),
       supabase.from("memories").select("id", { count: "exact", head: true }),
-      supabase.from("bucket_list").select("done"),
+      supabase.from("bucket_items").select("status"),
     ]).then(([dates, movies, lastMem, memCount, bucket]) => {
       if (cancelled) return;
       setCounts({
         dates: dates.count ?? 0,
         moviesWatched: movies.count ?? 0,
         memories: memCount.count ?? 0,
-        bucketDone: (bucket.data || []).filter(b => b.done).length,
+        bucketDone: (bucket.data || []).filter(b => b.status === "realizado").length,
         bucketTotal: (bucket.data || []).length,
       });
       if (lastMem.data && lastMem.data[0]) setLastMemory(lastMem.data[0]);
@@ -237,7 +237,7 @@ export default function HomePage({ onNavigate }) {
             { key: "memorias", icon: "◇", title: "Memórias", sub: `${counts.memories} momentos especiais` },
             { key: "diario", icon: "◈", title: "Diário", sub: "Só nossos pensamentos" },
             { key: "abrir-quando", icon: "⬡", title: "Abrir quando…", sub: `${OPEN_WHEN.length} cartinhas esperando` },
-            { key: "bucket", icon: "⊹", title: "Bucket List", sub: `${counts.bucketDone}/${counts.bucketTotal} realizados` },
+            { key: "bucket", icon: "⊹", title: "Nossos Sonhos", sub: `${counts.bucketDone}/${counts.bucketTotal} realizados` },
           ].map(s => (
             <button
               key={s.key}

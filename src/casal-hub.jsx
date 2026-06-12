@@ -27,7 +27,7 @@ const NAV_ITEMS = [
   { key: "memorias", label: "Memórias" },
   { key: "diario", label: "Diário" },
   { key: "abrir-quando", label: "Abrir quando" },
-  { key: "bucket", label: "Bucket List" },
+  { key: "bucket", label: "Nossos Sonhos" },
   { key: "sorteador", label: "Sorteador" },
 ];
 
@@ -60,7 +60,7 @@ export default function App() {
     memorias: <MemoriesPage />,
     diario: <DiarioPage />,
     "abrir-quando": <AbrirQuandoPage />,
-    bucket: <BucketPage />,
+    bucket: <BucketPage onNavigate={navigate} />,
     sorteador: <SorteadorPage />,
   };
 
