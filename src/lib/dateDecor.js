@@ -76,7 +76,7 @@ function mix32(h) {
 }
 
 /** Hash bem-distribuído de qualquer chave, derivado do id (+ sufixo opcional). */
-function hashed(key) {
+export function hashed(key) {
   return mix32(simpleHash(String(key)));
 }
 

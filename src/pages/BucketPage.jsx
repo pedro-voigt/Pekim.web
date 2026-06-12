@@ -92,7 +92,13 @@ export default function BucketPage({ onNavigate }) {
   // (uma só) é referenciada pela memória E pela polaroid do sonho — mesmo arquivo.
   const criarMemoria = async (payload) => {
     const dream = realizandoDream;
-    const { data, error } = await supabase.from("memories").insert(payload).select("id").single();
+    // Recíproco do Mirror: grava memories.bucket_item_id → o sonho de origem.
+    // É o que faz o selo "✦ Sonho realizado!" e o filtro "sonhos" do Mural
+    // reconhecerem a memória (o lado bucket_items.memoria_id é fechado abaixo).
+    const { data, error } = await supabase
+      .from("memories")
+      .insert({ ...payload, bucket_item_id: dream.id })
+      .select("id").single();
     if (error || !data) {
       console.error("[memoria from sonho]", error);
       toast.error("não foi possível criar a memória");

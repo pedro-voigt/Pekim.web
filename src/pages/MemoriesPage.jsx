@@ -1,305 +1,233 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 
 import useCollection from "../hooks/useCollection";
-import PageHeader from "../components/ui/PageHeader";
-import PageContainer from "../components/ui/PageContainer";
-import Collapsible from "../components/ui/Collapsible";
-import ItemActions from "../components/ui/ItemActions";
-import FormToggleButton from "../components/ui/FormToggleButton";
-import FormActions from "../components/ui/FormActions";
-import LoadingDots from "../components/ui/LoadingDots";
-import EmptyState from "../components/ui/EmptyState";
-import Avatar from "../components/ui/Avatar";
-import PhotoUploader from "../components/ui/PhotoUploader";
 import usePhotoUpload from "../hooks/usePhotoUpload";
+import { supabase } from "../lib/supabase";
+import { toMuralMemory, normalizeAutor } from "../lib/muralAdapter";
 import { deleteImage } from "../lib/uploadImage";
-import { Label, Input, Select, Textarea } from "../components/ui/Field";
-
-// Leaflet (~150 KB) vive numa aba pouco usada → carrega sob demanda.
-const CorkMap = lazy(() => import("../components/map/CorkMap"));
-
-const COLORS = ["#c9ddb0", "#b5c490", "#a8d4b8", "#D3968C", "#b8d4d8"];
+import useMediaQuery from "../hooks/useMediaQuery";
+import PageContainer from "../components/ui/PageContainer";
+import LoadingDots from "../components/ui/LoadingDots";
+import Collapsible from "../components/ui/Collapsible";
+import FormToggleButton from "../components/ui/FormToggleButton";
+import MemoriesHeader from "../components/memories/MemoriesHeader";
+import MuralFilters from "../components/memories/MuralFilters";
+import MemoryForm from "../components/memories/MemoryForm";
+import Mural from "../components/memories/Mural";
+import MuralEmptyState from "../components/memories/MuralEmptyState";
 
 const EMPTY = {
   title: "",
   date: new Date().toISOString().split("T")[0],
   description: "",
-  emoji: "✦",
-  color: COLORS[0],
+  local: "",
   autor: "",
 };
 
-const byDate = (a, b) => (a.date || "").localeCompare(b.date || "");
+const matchesFilter = (m, filter) =>
+  filter === "sonhos"  ? m.origem === "sonho" :
+  filter === "viagens" ? !!m.local :
+  true; // "todos"
 
-export default function MemoriesPage() {
-  const { items: memories, loading, create, update, remove } = useCollection("memories", {
-    order: { column: "date", ascending: true },
-    sort: byDate,
-    messages: {
-      load: "não foi possível carregar as memórias",
-      create: "não foi possível guardar a memória",
-      update: "não foi possível atualizar a memória",
-    },
-  });
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(EMPTY);
-  const [tab, setTab] = useState("timeline"); // "timeline" | "map"
-  const photo = usePhotoUpload([], "memorias");
+// Conta os lugares reais do mapa (tabela `lugares`) sem trazer as linhas.
+function useLugaresCount() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let active = true;
+    supabase.from("lugares").select("*", { count: "exact", head: true })
+      .then(({ count }) => { if (active) setCount(count || 0); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+  return count;
+}
 
-  const set = field => e => setForm(f => ({ ...f, [field]: e.target.value }));
+// Leaflet (~150 KB) vive numa aba pouco usada → carrega sob demanda.
+const CorkMap = lazy(() => import("../components/map/CorkMap"));
 
-  const resetForm = () => {
-    setEditingId(null);
-    setForm(EMPTY);
-    setFormOpen(false);
-    photo.reset([]);
-  };
+const TABS = [
+  { key: "mural", label: "Mural" },
+  { key: "mapa",  label: "Mapa 📍" },
+];
 
-  const iniciarEdicao = (m) => {
-    setEditingId(m.id);
-    setForm({
-      title: m.title || "",
-      date: m.date || EMPTY.date,
-      description: m.description || "",
-      emoji: m.emoji || "✦",
-      color: m.color || COLORS[0],
-      autor: m.autor || "",
-    });
-    photo.reset(Array.isArray(m.fotos) ? m.fotos : []);
-    setFormOpen(true);
-  };
-
-  const cancelarEdicao = () => {
-    photo.cleanupCanceled();   // apaga as enviadas e nunca salvas
-    resetForm();
-  };
-
-  const salvar = async () => {
-    if (!form.title.trim()) return;
-    const payload = { ...form, title: form.title.trim(), autor: form.autor || null, fotos: photo.fotos };
-    const ok = editingId
-      ? await update(editingId, payload)
-      : await create(payload);
-    if (!ok) return;
-    photo.cleanupSaved();      // apaga as removidas e salvas
-    resetForm();
-  };
-
-  const excluir = async (m) => {
-    const fotos = Array.isArray(m.fotos) ? m.fotos : [];
-    const ok = await remove(m.id);
-    if (ok) fotos.forEach(deleteImage);   // limpa as fotos órfãs no Storage
-  };
-
-  const isEditing = editingId !== null;
-
+function Tabs({ tab, setTab }) {
   return (
-    <PageContainer>
-      <PageHeader title="Memórias" sub="Tudo que a gente não quer esquecer" icon="◇" />
-
-      {/* Abas */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "32px" }}>
-        {[
-          { key: "timeline", label: "Linha do tempo" },
-          { key: "map", label: "Mapa" },
-        ].map(t => (
+    <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "22px" }}>
+      {TABS.map(t => {
+        const active = tab === t.key;
+        return (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontStyle: "italic", fontSize: "14px",
-              color: tab === t.key ? "#F7F4D5" : "#2e5c3a",
-              background: tab === t.key ? "#0A3323" : "transparent",
-              border: "1px solid #0A3323", padding: "8px 18px",
-              cursor: "pointer", transition: "all 0.2s",
+              fontFamily:   "'Playfair Display', serif",
+              fontWeight:   700,
+              fontSize:     "15px",
+              padding:      "8px 22px",
+              borderRadius: "20px",
+              cursor:       "pointer",
+              transition:   "all 0.2s",
+              background:   active ? "#0A3323" : "transparent",
+              color:        active ? "#F7F4D5" : "#0A3323",
+              border:       active ? "1px solid #0A3323" : "1px solid rgba(10,51,35,0.25)",
+              opacity:      active ? 1 : 0.6,
             }}
-          >{t.label}</button>
-        ))}
-      </div>
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-      {tab === "map" && (
-        <Suspense fallback={<LoadingDots size="15px" />}>
-          <CorkMap />
-        </Suspense>
-      )}
+export default function MemoriesPage() {
+  const [tab, setTab] = useState("mural");
+  const [filter, setFilter] = useState("todos");
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
-      {tab === "timeline" && (<>
-      {/* Formulário */}
-      <div style={{ marginBottom: "40px" }}>
-        <FormToggleButton
-          open={formOpen}
-          editing={isEditing}
-          onClick={() => isEditing ? cancelarEdicao() : setFormOpen(o => !o)}
-          addLabel="adicionar memória"
-          editLabel="editando memória"
-        />
-        <Collapsible open={formOpen} maxHeight="680px">
-          <div data-form-grid style={{
-            background: "#F7F4D5", padding: "28px 24px", marginTop: "2px",
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px 24px",
-          }}>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <Label>título *</Label>
-              <Input value={form.title} onChange={set("title")} placeholder="O que aconteceu?" />
-            </div>
-            <div>
-              <Label>data</Label>
-              <Input type="date" value={form.date} onChange={set("date")} />
-            </div>
-            <div>
-              <Label>emoji</Label>
-              <Input value={form.emoji} onChange={set("emoji")} maxLength={2} placeholder="☕" />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <Label>autor</Label>
-              <Select value={form.autor} onChange={set("autor")}>
-                <option value="">—</option>
-                <option value="Pedro">Pedro</option>
-                <option value="Kim">Kim</option>
-              </Select>
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <Label>descrição</Label>
-              <Textarea
-                value={form.description}
-                onChange={set("description")}
-                placeholder="Como foi..."
-                style={{ minHeight: "80px" }}
+  const { items: rows, loading, create, update, remove } = useCollection("memories", {
+    order: { column: "date", ascending: false }, // mais recentes fixadas primeiro
+    messages: {
+      load:   "não foi possível carregar as memórias",
+      create: "não foi possível guardar a memória",
+      update: "não foi possível atualizar a memória",
+    },
+  });
+  const memories = rows.map(toMuralMemory);
+
+  // "momentos" = memórias reais; "lugares no mapa" = pins reais da tabela `lugares`.
+  const momentos = memories.length;
+  const lugares  = useLugaresCount();
+
+  const filtered = memories.filter(m => matchesFilter(m, filter));
+  const counts = {
+    todos:   memories.length,
+    sonhos:  memories.filter(m => matchesFilter(m, "sonhos")).length,
+    viagens: memories.filter(m => matchesFilter(m, "viagens")).length,
+  };
+
+  // ── Form criar/editar ───────────────────────────────────────────────────────
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing]   = useState(null); // linha crua de `memories` | null
+  const [form, setForm]         = useState(EMPTY);
+  const photo = usePhotoUpload([], "memorias");
+
+  const field    = f   => e => setForm(s => ({ ...s, [f]: e.target.value }));
+  const setAutor = key =>      setForm(s => ({ ...s, autor: s.autor === key ? "" : key }));
+
+  const resetForm = () => { setEditing(null); setForm(EMPTY); photo.reset([]); setFormOpen(false); };
+
+  const abrirNovo = () => { setEditing(null); setForm(EMPTY); photo.reset([]); setFormOpen(true); };
+
+  const editarRow = (row) => {
+    setEditing(row);
+    setForm({
+      title:       row.title || "",
+      date:        row.date || EMPTY.date,
+      description: row.description || "",
+      local:       row.local?.nome || "",
+      autor:       normalizeAutor(row.autor) || "",
+    });
+    photo.reset(Array.isArray(row.fotos) ? row.fotos : []);
+    setFormOpen(true);
+  };
+
+  const cancelar = () => { photo.cleanupCanceled(); resetForm(); };
+
+  const salvar = async () => {
+    if (!form.title.trim()) return;
+    const nome = form.local.trim();
+    const payload = {
+      title:       form.title.trim(),
+      date:        form.date || null,
+      description: form.description.trim() || null,
+      autor:       form.autor || null,
+      local:       nome ? { ...(editing?.local || {}), nome } : null,
+      fotos:       photo.fotos,
+    };
+    const ok = editing ? await update(editing.id, payload) : await create(payload);
+    if (!ok) return;
+    photo.cleanupSaved(); // apaga do Storage as removidas-e-salvas
+    photo.reset([]);
+    resetForm();
+  };
+
+  // O Mural entrega a memória adaptada; recupera a linha crua p/ editar/excluir.
+  const rowOf = (mm) => rows.find(r => String(r.id) === mm.id);
+
+  const onEdit = (mm) => { const row = rowOf(mm); if (row) editarRow(row); };
+
+  const onDelete = async (mm) => {
+    const row = rowOf(mm);
+    if (!row) return;
+    const fotos = Array.isArray(row.fotos) ? row.fotos : [];
+    const ok = await remove(row.id);
+    if (ok) fotos.forEach(deleteImage); // limpa as fotos órfãs no Storage
+  };
+
+  const isEditing = editing !== null;
+  const editingId = editing ? String(editing.id) : null;
+
+  return (
+    <PageContainer>
+      <MemoriesHeader momentos={momentos} lugares={lugares} />
+
+      <Tabs tab={tab} setTab={setTab} />
+
+      <div key={tab} style={{ animation: reducedMotion ? "none" : "fadeIn 0.4s ease both" }}>
+        {tab === "mural" && (<>
+          {/* Form (criar/editar) — alinhado à largura do mosaico */}
+          <div style={{ maxWidth: "680px", margin: "0 auto" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px" }}>
+              <FormToggleButton
+                open={formOpen}
+                editing={isEditing}
+                onClick={() => (formOpen ? cancelar() : abrirNovo())}
+                addLabel="adicionar memória"
+                editLabel="editando memória"
               />
             </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <Label>cor</Label>
-              <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-                {COLORS.map(c => (
-                  <button
-                    key={c}
-                    onClick={() => setForm(f => ({ ...f, color: c }))}
-                    title={c}
-                    style={{
-                      width: "28px", height: "28px",
-                      background: c, cursor: "pointer",
-                      border: form.color === c ? "2px solid #0A3323" : "1px solid #D8D9B0",
-                      borderRadius: "50%", padding: 0,
-                    }}
-                  />
-                ))}
-              </div>
+            <div style={{ marginBottom: "20px" }}>
+              <Collapsible open={formOpen} maxHeight="760px">
+                <MemoryForm
+                  form={form}
+                  onField={field}
+                  autor={form.autor}
+                  onAutor={setAutor}
+                  photo={photo}
+                  editing={isEditing}
+                  canSave={!!form.title.trim()}
+                  onSave={salvar}
+                  onCancel={cancelar}
+                />
+              </Collapsible>
             </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <PhotoUploader {...photo} />
-            </div>
-            <FormActions
-              canSave={!!form.title.trim()}
-              editing={isEditing}
-              onSave={salvar}
-              onCancel={cancelarEdicao}
-            />
           </div>
-        </Collapsible>
+
+          <MuralFilters value={filter} onChange={setFilter} counts={counts} />
+
+          {loading ? (
+            <LoadingDots size="15px" />
+          ) : filtered.length === 0 ? (
+            <MuralEmptyState filter={filter} onReset={() => setFilter("todos")} onAdd={abrirNovo} />
+          ) : (
+            <Mural
+              memories={filtered}
+              reducedMotion={reducedMotion}
+              editingId={editingId}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          )}
+        </>)}
+
+        {tab === "mapa" && (
+          <Suspense fallback={<LoadingDots size="15px" />}>
+            <CorkMap />
+          </Suspense>
+        )}
       </div>
-
-      {/* Timeline */}
-      {loading ? (
-        <LoadingDots size="15px" />
-      ) : memories.length === 0 ? (
-        <EmptyState>Nenhuma memória ainda. Adicione a primeira ✦</EmptyState>
-      ) : (
-        <div style={{ position: "relative", paddingLeft: "40px" }}>
-          <div style={{
-            position: "absolute", left: "7px", top: "8px", bottom: "0",
-            width: "1px", background: "#D8D9B0",
-          }} />
-
-          {memories.map((m, i) => (
-            <div key={m.id} style={{
-              position: "relative",
-              marginBottom: "48px",
-              animation: `fadeIn 0.5s ease ${i * 0.1}s both`,
-            }}>
-              <div style={{
-                position: "absolute", left: "-34px", top: "6px",
-                width: "14px", height: "14px",
-                background: m.color,
-                border: "2px solid #839958",
-                borderRadius: "50%",
-              }} />
-
-              <div style={{
-                fontSize: "11px",
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                color: "#5a8060",
-                marginBottom: "8px",
-                fontFamily: "'Cormorant Garamond', serif",
-              }}>
-                {new Date(m.date + "T12:00:00").toLocaleDateString("pt-BR", {
-                  day: "2-digit", month: "long", year: "numeric",
-                })}
-              </div>
-
-              <div style={{
-                background: "#F7F4D5",
-                padding: "24px 28px",
-                borderLeft: `3px solid ${m.color}`,
-                outline: editingId === m.id ? "2px solid #D3968C" : "none",
-                outlineOffset: "-2px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px", gap: "12px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-                    <span style={{ fontSize: "24px" }}>{m.emoji}</span>
-                    <h3 style={{
-                      fontFamily: "'Playfair Display', serif",
-                      fontSize: "20px", fontWeight: "400",
-                      color: "#0A3323", margin: 0,
-                    }}>{m.title}</h3>
-                  </div>
-                  <ItemActions
-                    onEdit={() => iniciarEdicao(m)}
-                    onDelete={() => excluir(m)}
-                    confirmMessage={`Excluir a memória "${m.title}"?`}
-                  />
-                </div>
-                <p style={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  fontSize: "15px", color: "#2e5c3a",
-                  lineHeight: 1.7, margin: 0,
-                  fontStyle: "italic",
-                }}>{m.description}</p>
-                {Array.isArray(m.fotos) && m.fotos.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "16px" }}>
-                    {m.fotos.map((url) => (
-                      <a key={url} href={url} target="_blank" rel="noreferrer" style={{ display: "block" }}>
-                        <img
-                          src={url}
-                          alt=""
-                          loading="lazy"
-                          style={{
-                            width: "84px", height: "84px", objectFit: "cover",
-                            border: "4px solid #fff", boxShadow: "0 3px 8px rgba(0,0,0,0.18)",
-                            background: "#EEEBd8",
-                          }}
-                        />
-                      </a>
-                    ))}
-                  </div>
-                )}
-                {m.autor && (
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "14px" }}>
-                    <Avatar name={m.autor} size={20} />
-                    <span style={{
-                      fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic",
-                      fontSize: "12px", color: "#a8bc80",
-                    }}>{m.autor}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      </>)}
     </PageContainer>
   );
 }
