@@ -28,7 +28,7 @@ const NAV_ITEMS = [
   { key: "diario", label: "Diário" },
   { key: "abrir-quando", label: "Abrir quando" },
   { key: "bucket", label: "Nossos Sonhos" },
-  { key: "sorteador", label: "Sorteador" },
+  { key: "sorteador", label: "A Sorte Decide" },
 ];
 
 const NAV_ICONS = {
@@ -61,7 +61,7 @@ export default function App() {
     diario: <DiarioPage />,
     "abrir-quando": <AbrirQuandoPage />,
     bucket: <BucketPage onNavigate={navigate} />,
-    sorteador: <SorteadorPage />,
+    sorteador: <SorteadorPage onNavigate={navigate} />,
   };
 
   // In mobile the drawer always renders fully expanded; collapsed only applies to desktop.
@@ -100,6 +100,7 @@ export default function App() {
         body { background: #EEEBd8; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #EEEBd8; }
         ::-webkit-scrollbar-thumb { background: #839958; }
