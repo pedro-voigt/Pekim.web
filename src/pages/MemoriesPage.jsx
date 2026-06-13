@@ -52,7 +52,7 @@ const TABS = [
 
 function Tabs({ tab, setTab }) {
   return (
-    <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "22px" }}>
+    <div style={{ display: "flex", justifyContent: "flex-start", gap: "6px", marginBottom: "22px" }}>
       {TABS.map(t => {
         const active = tab === t.key;
         return (
@@ -170,16 +170,16 @@ export default function MemoriesPage() {
   const editingId = editing ? String(editing.id) : null;
 
   return (
-    <PageContainer>
+    <PageContainer maxWidth="1200px">
       <MemoriesHeader momentos={momentos} lugares={lugares} />
 
       <Tabs tab={tab} setTab={setTab} />
 
       <div key={tab} style={{ animation: reducedMotion ? "none" : "fadeIn 0.4s ease both" }}>
         {tab === "mural" && (<>
-          {/* Form (criar/editar) — alinhado à largura do mosaico */}
-          <div style={{ maxWidth: "680px", margin: "0 auto" }}>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px" }}>
+          {/* Form (criar/editar) — alinhado à esquerda, largura cheia (como Dates) */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: "14px" }}>
               <FormToggleButton
                 open={formOpen}
                 editing={isEditing}

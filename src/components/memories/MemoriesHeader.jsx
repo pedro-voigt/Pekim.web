@@ -2,59 +2,64 @@ import useMediaQuery from "../../hooks/useMediaQuery";
 
 const C = { green: "#0A3323", sage: "#839958", rose: "#D3968C" };
 
-function Stat({ n, label, isMobile }) {
+function Stat({ n, label }) {
   return (
-    <div>
-      <div style={{
+    <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
+      <span style={{
         fontFamily: "'Playfair Display', serif",
         fontWeight: 700,
-        fontSize:   isMobile ? "34px" : "40px",
+        fontSize:   "26px",
         color:      C.rose,
         lineHeight: 1,
       }}>
         {n}
-      </div>
-      <div style={{
+      </span>
+      <span style={{
         fontFamily:    "'Cormorant Garamond', serif",
         fontStyle:     "italic",
         fontSize:      "15px",
-        letterSpacing: "0.08em",
+        letterSpacing: "0.06em",
         textTransform: "uppercase",
         color:         C.sage,
-        marginTop:     "4px",
       }}>
         {label}
-      </div>
+      </span>
     </div>
   );
 }
 
-// Cabeçalho editorial centralizado — mesma escala da família (Nossa Sessão /
-// Nossos Sonhos): eyebrow itálico uppercase, título Playfair 900, subtítulo
-// itálico e contagem ancorada dupla.
+// Cabeçalho "etiqueta de arquivo" — alinhado à esquerda: tag verde rotacionada
+// (como uma etiqueta colada), título Playfair grande e contagem dupla à esquerda.
 export default function MemoriesHeader({ momentos, lugares }) {
   const isMobile = useMediaQuery("(max-width: 560px)");
 
   return (
-    <div style={{ textAlign: "center", maxWidth: "560px", margin: "0 auto 2.6rem" }}>
-      <div style={{
+    <div style={{ textAlign: "left", marginBottom: isMobile ? "24px" : "32px" }}>
+      <span style={{
+        display:       "inline-block",
+        background:    C.green,
+        color:         "#F7F4D5",
         fontFamily:    "'Cormorant Garamond', serif",
         fontStyle:     "italic",
-        fontSize:      "16px",
-        letterSpacing: "0.18em",
+        fontSize:      "12px",
+        letterSpacing: "0.12em",
         textTransform: "uppercase",
-        color:         C.sage,
-        marginBottom:  "0.7rem",
+        padding:       "4px 14px",
+        borderRadius:  "3px",
+        transform:     "rotate(-2.5deg)",
+        transformOrigin: "left center",
+        boxShadow:     "0 2px 6px rgba(10,51,35,0.2)",
+        marginBottom:  "0.6rem",
       }}>
-        tudo o que a gente já viveu
-      </div>
+        arquivo do nosso tempo
+      </span>
 
       <h1 style={{
         fontFamily:    "'Playfair Display', serif",
         fontWeight:    900,
-        fontSize:      "clamp(52px, 13vw, 68px)",
-        lineHeight:    0.98,
-        margin:        "0 0 0.6rem",
+        fontSize:      "clamp(46px, 14vw, 58px)",
+        lineHeight:    0.88,
+        margin:        "0 0 0.5rem",
         color:         C.green,
         letterSpacing: "-0.01em",
       }}>
@@ -68,21 +73,24 @@ export default function MemoriesHeader({ momentos, lugares }) {
         color:      C.green,
         opacity:    0.75,
         lineHeight: 1.35,
+        maxWidth:   "560px",
       }}>
         Os momentos que a gente guardou — e os lugares onde eles aconteceram.
       </div>
 
       <div style={{
-        display:        "flex",
-        justifyContent: "center",
-        alignItems:     "stretch",
-        gap:            "2.5rem",
-        marginTop:      "1.6rem",
+        display:    "flex",
+        flexWrap:   "wrap",
+        alignItems: "baseline",
+        gap:        "1.6rem",
+        margin:     isMobile ? "1.2rem 0 1.2rem" : "1.4rem 0 1.4rem",
       }}>
-        <Stat n={momentos} label="momentos" isMobile={isMobile} />
-        <div style={{ width: "1px", background: C.sage, opacity: 0.3 }} />
-        <Stat n={lugares} label="lugares no mapa" isMobile={isMobile} />
+        <Stat n={momentos} label="momentos" />
+        <Stat n={lugares} label="lugares no mapa" />
       </div>
+
+      {/* Filete full-width fechando o cabeçalho — mesmo recurso da página Dates */}
+      <div style={{ height: "1px", background: C.green, opacity: 0.18 }} />
     </div>
   );
 }

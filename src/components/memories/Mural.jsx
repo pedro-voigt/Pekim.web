@@ -8,7 +8,7 @@ export default function Mural({ memories, reducedMotion, editingId, onEdit, onDe
   const cols = isMobile ? 1 : isTablet ? 2 : 3;
 
   return (
-    <div style={{ columns: cols, columnGap: "14px", maxWidth: "680px", margin: "0 auto" }}>
+    <div style={{ columns: cols, columnGap: "18px" }}>
       {memories.map((m, i) => (
         <div
           key={m.id}

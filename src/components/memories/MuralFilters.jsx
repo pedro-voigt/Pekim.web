@@ -11,7 +11,7 @@ export default function MuralFilters({ value, onChange, counts }) {
   return (
     <div style={{
       display:        "flex",
-      justifyContent: "center",
+      justifyContent: "flex-start",
       gap:            "8px",
       marginBottom:   "26px",
       flexWrap:       "wrap",
